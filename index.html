@@ -815,9 +815,9 @@
 
         const enemyIcons = ['🧟', '🦇', '🐺', '🐉', '💀', '👺', '🕷️', '🦂', '🐍', '🐊', '🦖', '🦑'];
         const currentLevel = levelRef.current;
-        const baseSpeed = 0.8;
-        const levelSpeedMultiplier = Math.min(currentLevel, 20) * 0.15;
-        const calculatedSpeed = baseSpeed + levelSpeedMultiplier;
+        const baseSpeed = 1.0;
+        const levelSpeedMultiplier = currentLevel * 0.3;
+        const calculatedSpeed = Math.min(baseSpeed + levelSpeedMultiplier, 12);
 
         const prob = generateFractionProblem(currentLevel);
 
