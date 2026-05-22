@@ -741,18 +741,18 @@
     // 3. 캐슬 디펜스 게임 탭
     // ==========================================
     const WEAPONS = [
-      { id: 'dagger', name: '단검', icon: '🗡️', cost: 20, desc: '타겟 즉시 처치' },
-      { id: 'heal', name: '수리', icon: '🛠️', cost: 40, desc: '체력 +15' },
-      { id: 'web', name: '거미줄', icon: '🕸️', cost: 50, desc: '5초간 전체 50% 둔화' },
-      { id: 'bomb', name: '폭탄', icon: '💣', cost: 60, desc: '타겟 및 주변 폭사' },
-      { id: 'poison', name: '독구름', icon: '☁️', cost: 80, desc: '무작위 3마리 처치' },
-      { id: 'lightning', name: '번개', icon: '⚡', cost: 100, desc: '타겟 + 무작위 2마리' },
-      { id: 'icespear', name: '얼음창', icon: '🧊', cost: 120, desc: '처치 + 3초 빙결' },
-      { id: 'greatheal', name: '대회복', icon: '💖', cost: 150, desc: '체력 +40' },
-      { id: 'blizzard', name: '눈보라', icon: '❄️', cost: 180, desc: '5초간 전체 빙결' },
-      { id: 'swamp', name: '늪지대', icon: '늪', cost: 200, desc: '10초간 전체 70% 둔화' },
-      { id: 'meteor', name: '메테오', icon: '☄️', cost: 300, desc: '화면 내 모두 처치' },
-      { id: 'holylight', name: '천상의 빛', icon: '✨', cost: 500, desc: '체력 +100 & 모두 처치' }
+      { id: 'dagger', name: '단검', icon: '🗡️', cost: 35, desc: '타겟 즉시 처치' },
+      { id: 'heal', name: '수리', icon: '🛠️', cost: 60, desc: '체력 +10' },
+      { id: 'web', name: '거미줄', icon: '🕸️', cost: 90, desc: '4초간 전체 50% 둔화' },
+      { id: 'bomb', name: '폭탄', icon: '💣', cost: 130, desc: '타겟 및 주변 폭사' },
+      { id: 'poison', name: '독구름', icon: '☁️', cost: 200, desc: '무작위 3마리 처치' },
+      { id: 'lightning', name: '번개', icon: '⚡', cost: 250, desc: '타겟 + 무작위 2마리' },
+      { id: 'icespear', name: '얼음창', icon: '🧊', cost: 320, desc: '처치 + 2초 빙결' },
+      { id: 'greatheal', name: '대회복', icon: '💖', cost: 280, desc: '체력 +30' },
+      { id: 'blizzard', name: '눈보라', icon: '❄️', cost: 500, desc: '4초간 전체 빙결' },
+      { id: 'swamp', name: '늪지대', icon: '늪', cost: 550, desc: '8초간 전체 70% 둔화' },
+      { id: 'meteor', name: '메테오', icon: '☄️', cost: 900, desc: '최대 6마리 처치' },
+      { id: 'holylight', name: '천상의 빛', icon: '✨', cost: 1500, desc: '체력 +60 & 최대 8마리' }
     ];
 
     function DefenseGameTab({ isUnlocked, requiredCount, currentCount, onGoToPractice, isActive }) {
@@ -905,7 +905,7 @@
             const nextLevel = cur + 1;
             levelRef.current = nextLevel;
             setLevel(nextLevel);
-            setGold(g => g + 50 + (cur * 20));
+            setGold(g => g + 30 + (cur * 10)); // 웨이브 보너스 감소
             gameRef.current.spawned = 0;
             gameRef.current.eliminated = 0;
             gameRef.current.maxEnemies = 10 + (cur * 5);
@@ -960,7 +960,7 @@
         }
 
         if (isCorrect) {
-          setGold(g => g + 10 + Math.floor(levelRef.current * 2));
+          setGold(g => g + 6 + levelRef.current); // 문제풀이 골드 감소
           setScore(s => s + 100 * levelRef.current);
           gameRef.current.eliminated += 1;
           activeEnemyIdRef.current = null;
@@ -999,13 +999,13 @@
           applyEnemies(cur.filter(en => en.id !== target.id));
         }
         else if (type === 'heal') {
-          setHp(h => h + 15);
+          setHp(h => h + 10);
         }
         else if (type === 'web') {
           slowFactorRef.current = 0.5;
           setIsSlowed(true);
           if(slowTimeoutRef.current) clearTimeout(slowTimeoutRef.current);
-          slowTimeoutRef.current = setTimeout(() => { slowFactorRef.current = 1.0; setIsSlowed(false); }, 5000);
+          slowTimeoutRef.current = setTimeout(() => { slowFactorRef.current = 1.0; setIsSlowed(false); }, 4000);
         }
         else if (type === 'bomb') {
           let killedCount = 0;
@@ -1036,36 +1036,41 @@
           isFrozenRef.current = true;
           setIsFrozen(true);
           if(freezeTimeoutRef.current) clearTimeout(freezeTimeoutRef.current);
-          freezeTimeoutRef.current = setTimeout(() => { isFrozenRef.current = false; setIsFrozen(false); }, 3000);
+          freezeTimeoutRef.current = setTimeout(() => { isFrozenRef.current = false; setIsFrozen(false); }, 2000);
           gameRef.current.eliminated += 1;
           clearTarget();
           applyEnemies(cur.filter(en => en.id !== target.id));
         }
         else if (type === 'greatheal') {
-          setHp(h => h + 40);
+          setHp(h => h + 30);
         }
         else if (type === 'blizzard') {
           isFrozenRef.current = true;
           setIsFrozen(true);
           if(freezeTimeoutRef.current) clearTimeout(freezeTimeoutRef.current);
-          freezeTimeoutRef.current = setTimeout(() => { isFrozenRef.current = false; setIsFrozen(false); }, 5000);
+          freezeTimeoutRef.current = setTimeout(() => { isFrozenRef.current = false; setIsFrozen(false); }, 4000);
         }
         else if (type === 'swamp') {
           slowFactorRef.current = 0.3;
           setIsSlowed(true);
           if(slowTimeoutRef.current) clearTimeout(slowTimeoutRef.current);
-          slowTimeoutRef.current = setTimeout(() => { slowFactorRef.current = 1.0; setIsSlowed(false); }, 10000);
+          slowTimeoutRef.current = setTimeout(() => { slowFactorRef.current = 1.0; setIsSlowed(false); }, 8000);
         }
         else if (type === 'meteor') {
-          gameRef.current.eliminated += cur.length;
+          // 성벽에 가까운 순서로 최대 6마리만 처치
+          const sorted = [...cur].sort((a, b) => b.wp - a.wp);
+          const killedIds = new Set(sorted.slice(0, 6).map(en => en.id));
+          gameRef.current.eliminated += killedIds.size;
           clearTarget();
-          applyEnemies([]);
+          applyEnemies(cur.filter(en => !killedIds.has(en.id)));
         }
         else if (type === 'holylight') {
-          setHp(h => h + 100);
-          gameRef.current.eliminated += cur.length;
+          setHp(h => h + 60);
+          const sorted = [...cur].sort((a, b) => b.wp - a.wp);
+          const killedIds = new Set(sorted.slice(0, 8).map(en => en.id));
+          gameRef.current.eliminated += killedIds.size;
           clearTarget();
-          applyEnemies([]);
+          applyEnemies(cur.filter(en => !killedIds.has(en.id)));
         }
       };
 
