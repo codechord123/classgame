@@ -961,6 +961,11 @@
       const [inputD, setInputD] = useState("");
       const [inputN2, setInputN2] = useState("");
 
+      // 문제 풀이(골드 획득) 패널용 상태
+      const [problem, setProblem] = useState(() => generateFractionProblem(1));
+      const [solveFx, setSolveFx] = useState(null); // { type:'correct'|'wrong', amt, key }
+      const solveFxTimer = useRef(null);
+
       const requestRef = useRef();
       const lastTimeRef = useRef();
 
@@ -997,10 +1002,7 @@
         const levelSpeedMultiplier = currentLevel * 0.3;
         const calculatedSpeed = Math.min(baseSpeed + levelSpeedMultiplier, 12);
 
-        const prob = generateFractionProblem(currentLevel);
-
         const enemy = {
-          ...prob,
           id: Math.random().toString(36).substr(2, 9),
           x: GAME_PATH[0].x, y: GAME_PATH[0].y, wp: 1,
           speed: calculatedSpeed * (0.9 + Math.random() * 0.2),
@@ -1082,7 +1084,7 @@
             const nextLevel = cur + 1;
             levelRef.current = nextLevel;
             setLevel(nextLevel);
-            setGold(g => g + 30 + (cur * 10)); // 웨이브 보너스 감소
+            setGold(g => g + 40 + (cur * 20)); // 웨이브 클리어 보너스
             gameRef.current.spawned = 0;
             gameRef.current.eliminated = 0;
             gameRef.current.maxEnemies = 10 + (cur * 5);
@@ -1117,37 +1119,35 @@
         };
       }, [gameState, gameLoop]);
 
-      // 문제 풀어서 공격
+      // 문제를 풀어 골드 획득 (적 처치는 무기로!)
       const handleSubmit = (e) => {
         e.preventDefault();
-        if (!activeEnemyId) return;
-
-        const enemy = enemiesRef.current.find(en => en.id === activeEnemyId);
-        if (!enemy) return;
 
         const uN = parseInt(inputN);
         const uD = parseInt(inputD);
         const uN2 = parseInt(inputN2);
 
         let isCorrect = false;
-        if (enemy.type === 'common') {
-          isCorrect = (uN === enemy.ansN1 && uN2 === enemy.ansN2 && uD === enemy.ansD);
+        if (problem.type === 'common') {
+          isCorrect = (uN === problem.ansN1 && uN2 === problem.ansN2 && uD === problem.ansD);
         } else {
-          isCorrect = (uN === enemy.ansN && uD === enemy.ansD);
+          isCorrect = (uN === problem.ansN && uD === problem.ansD);
         }
 
+        if (solveFxTimer.current) clearTimeout(solveFxTimer.current);
+
         if (isCorrect) {
-          setGold(g => g + 6 + levelRef.current); // 문제풀이 골드 감소
-          setScore(s => s + 100 * levelRef.current);
-          gameRef.current.eliminated += 1;
-          activeEnemyIdRef.current = null;
-          setActiveEnemyId(null);
+          const reward = 14 + levelRef.current * 4;
+          setGold(g => g + reward);
+          setScore(s => s + 50 * levelRef.current);
+          setProblem(generateFractionProblem(levelRef.current));
           setInputN(""); setInputD(""); setInputN2("");
-          enemiesRef.current = enemiesRef.current.filter(en => en.id !== activeEnemyId);
-          setEnemies(enemiesRef.current);
+          setSolveFx({ type: 'correct', amt: reward, key: Date.now() });
         } else {
           setInputN(""); setInputD(""); setInputN2("");
+          setSolveFx({ type: 'wrong', key: Date.now() });
         }
+        solveFxTimer.current = setTimeout(() => setSolveFx(null), 1100);
       };
 
       // 무기 사용 (enemiesRef를 직접 동기 조작)
@@ -1155,8 +1155,12 @@
         if (gold < cost) return;
 
         const cur = enemiesRef.current;
-        const target = cur.find(en => en.id === activeEnemyIdRef.current);
         const requiresTarget = ['dagger', 'bomb', 'lightning', 'icespear'].includes(type);
+        // 선택된 적이 없으면 성벽에 가장 가까운(앞선) 적을 자동 타깃
+        let target = cur.find(en => en.id === activeEnemyIdRef.current);
+        if (requiresTarget && !target && cur.length > 0) {
+          target = [...cur].sort((a, b) => b.wp - a.wp)[0];
+        }
         if (requiresTarget && !target) return;
 
         setGold(g => g - cost);
@@ -1253,7 +1257,7 @@
 
       const startGame = () => {
         setHp(50);
-        setGold(30);
+        setGold(50);
         setScore(0);
         setLevel(1);
         levelRef.current = 1;
@@ -1262,6 +1266,9 @@
         setActiveEnemyId(null);
         activeEnemyIdRef.current = null;
         setInputN(""); setInputD(""); setInputN2("");
+        setProblem(generateFractionProblem(1));
+        setSolveFx(null);
+        if (solveFxTimer.current) clearTimeout(solveFxTimer.current);
         setIsFrozen(false);
         isFrozenRef.current = false;
         setIsSlowed(false);
@@ -1282,7 +1289,7 @@
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-amber-100 mb-3 md:mb-6 tracking-widest relative z-10 drop-shadow-lg break-keep">분수 왕국 대전투</h2>
             <p className="text-xs sm:text-base md:text-xl text-stone-300 mb-6 md:mb-10 max-w-2xl leading-relaxed relative z-10 px-2 md:px-4 break-keep">
               거대한 몬스터 군단이 성벽으로 진격합니다!<br/>
-              문제를 풀어 골드를 획득하고 강력한 <strong className="text-amber-400">번개와 메테오</strong>를 구매하세요.<br/>
+              <strong className="text-amber-400">약분·통분 문제를 풀어 골드를 모으고</strong>, 그 골드로 <strong className="text-amber-400">무기를 구매</strong>해 몬스터를 막아내세요!<br/>
             </p>
             <button onClick={startGame} className="relative z-10 bg-gradient-to-b from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 border-2 border-amber-400 text-white px-8 sm:px-12 md:px-16 py-3 md:py-5 rounded-lg font-black text-lg sm:text-2xl md:text-3xl shadow-[0_0_30px_rgba(245,158,11,0.4)] transition transform hover:scale-105 uppercase tracking-widest whitespace-nowrap">
               전투 시작
@@ -1304,8 +1311,6 @@
           </div>
         );
       }
-
-      const activeEnemy = enemies.find(e => e.id === activeEnemyId);
 
       return (
         <div className="flex flex-col flex-1 w-full h-full p-0 md:p-2 bg-transparent text-stone-100 animate-fade-in overflow-hidden max-w-5xl mx-auto">
@@ -1352,7 +1357,7 @@
             {enemies.map((enemy) => (
               <div
                 key={enemy.id}
-                onClick={() => { activeEnemyIdRef.current = enemy.id; setActiveEnemyId(enemy.id); setInputN(""); setInputD(""); setInputN2(""); }}
+                onClick={() => { activeEnemyIdRef.current = enemy.id; setActiveEnemyId(enemy.id); }}
                 className="absolute z-20 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
                 style={{ left: `${enemy.x}%`, top: `${enemy.y}%` }}
               >
@@ -1360,9 +1365,7 @@
 
                 <div className={`relative flex flex-col items-center justify-center p-1 md:p-2 rounded-full border shadow-2xl transition-transform ${activeEnemyId === enemy.id ? 'border-yellow-400 scale-[1.3] z-30 bg-stone-800' : 'border-stone-600 bg-stone-900 hover:scale-[1.1]'}`}>
                   <span className="text-xl sm:text-2xl md:text-4xl filter drop-shadow-md leading-none">{enemy.icon}</span>
-                  <span className="absolute -bottom-6 sm:-bottom-8 md:-bottom-10 font-bold whitespace-nowrap bg-stone-900 border md:border-2 border-amber-700 text-amber-100 px-1.5 py-0.5 md:px-3 md:py-1 rounded shadow-lg z-40 text-[9px] sm:text-[10px] md:text-sm">
-                    {enemy.qText}
-                  </span>
+                  {activeEnemyId === enemy.id && <span className="absolute -bottom-5 md:-bottom-7 font-black whitespace-nowrap bg-yellow-400 text-stone-900 px-1.5 py-0.5 md:px-2 rounded shadow-lg z-40 text-[8px] sm:text-[10px] md:text-xs">🎯 대상</span>}
                 </div>
               </div>
             ))}
@@ -1375,7 +1378,7 @@
             <div className="flex flex-row flex-wrap gap-1 md:gap-2 bg-stone-900 p-1.5 md:p-4 rounded-xl border border-stone-700 w-full shadow-inner justify-center items-center">
               {WEAPONS.map(w => {
                 const requiresTarget = ['dagger', 'bomb', 'lightning', 'icespear'].includes(w.id);
-                const isDisabled = gold < w.cost || (requiresTarget && !activeEnemyId);
+                const isDisabled = gold < w.cost || (requiresTarget && enemies.length === 0);
                 return (
                   <button key={w.id} onClick={() => buyWeapon(w.id, w.cost)} disabled={isDisabled}
                     className="group relative flex flex-col items-center justify-center p-1 md:p-3 bg-gradient-to-b from-stone-700 to-stone-800 hover:from-stone-600 hover:to-stone-700 disabled:from-stone-900 disabled:to-stone-900 disabled:opacity-40 border border-stone-600 rounded-lg shadow-md transition-all transform active:scale-95 disabled:active:scale-100 w-[42px] h-[52px] sm:w-[58px] sm:h-[68px] md:w-[78px] md:h-auto flex-shrink-0">
@@ -1391,43 +1394,44 @@
               })}
             </div>
 
-            {/* 입력 폼 */}
-            <div className="w-full flex items-center justify-center pb-1">
-              {!activeEnemy ? (
-                <div className="text-amber-500 font-black animate-pulse text-xs sm:text-sm md:text-2xl tracking-widest bg-stone-900 px-4 py-3 md:px-6 md:py-6 rounded-xl border-2 border-amber-900 border-dashed text-center w-full break-keep flex items-center justify-center min-h-[50px] md:min-h-[80px]">
-                   ⚔️ 몬스터를 터치(클릭)하여 장전하십시오!
+            {/* 문제 풀이 패널 - 정답을 맞히면 골드 획득! */}
+            <div className="w-full flex flex-col items-center gap-1.5 pb-1">
+              <div className="text-[10px] sm:text-xs md:text-sm text-amber-300/90 text-center break-keep px-2">
+                🪙 문제를 풀어 골드를 모으고, 무기를 사서 몬스터를 막으세요! <span className="hidden sm:inline">몬스터를 클릭하면 단검·폭탄·번개·얼음창의 대상이 되고, 선택하지 않으면 맨 앞 적을 공격합니다.</span>
+              </div>
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-6 bg-stone-900 p-2 sm:p-3 md:p-6 rounded-xl md:rounded-2xl border-2 border-amber-600 shadow-[0_0_15px_rgba(217,119,6,0.3)] w-full">
+                <div className="text-xs sm:text-sm md:text-2xl font-black text-amber-100 bg-stone-800 px-3 py-1.5 md:px-4 md:py-2 rounded-md border border-stone-600 whitespace-nowrap flex-shrink-0">
+                   {problem.qText}
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-6 bg-stone-900 p-2 sm:p-3 md:p-6 rounded-xl md:rounded-2xl border-2 border-amber-600 shadow-[0_0_15px_rgba(217,119,6,0.3)] w-full">
-                  <div className="text-xs sm:text-sm md:text-2xl font-black text-amber-100 bg-stone-800 px-3 py-1.5 md:px-4 md:py-2 rounded-md border border-stone-600 whitespace-nowrap flex-shrink-0">
-                     {activeEnemy.qText}
-                  </div>
-                  <ArrowRight className="text-stone-500 hidden sm:block w-4 h-4 md:w-7 md:h-7 flex-shrink-0" />
+                <ArrowRight className="text-stone-500 hidden sm:block w-4 h-4 md:w-7 md:h-7 flex-shrink-0" />
 
-                  <div className="flex gap-1 md:gap-3 items-center w-full justify-center">
-                    {activeEnemy.type === 'reduce' ? (
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <input type="number" autoFocus value={inputN} onChange={e => setInputN(e.target.value)} placeholder="분자" className="w-10 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-sm sm:text-base md:text-xl font-black bg-stone-800 border md:border-2 border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                        <span className="text-stone-500 text-lg md:text-2xl font-light">/</span>
-                        <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="분모" className="w-10 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-sm sm:text-base md:text-xl font-black bg-stone-800 border md:border-2 border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-0.5 md:gap-2">
-                        <input type="number" autoFocus value={inputN} onChange={e => setInputN(e.target.value)} placeholder="분자" className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                        <span className="text-stone-500 text-sm md:text-2xl font-light">/</span>
-                        <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="공통" className="w-9 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                        <span className="text-amber-500 font-bold text-xs sm:text-sm md:text-2xl mx-0.5 md:mx-2 pb-1">,</span>
-                        <input type="number" value={inputN2} onChange={e => setInputN2(e.target.value)} placeholder="분자" className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                        <span className="text-stone-500 text-sm md:text-2xl font-light">/</span>
-                        <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="공통" className="w-9 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
-                      </div>
-                    )}
-                    <button type="submit" className="bg-gradient-to-t from-amber-600 to-amber-400 hover:from-amber-500 hover:to-amber-300 text-stone-900 font-black px-2 sm:px-4 md:px-6 py-1.5 md:py-3 rounded md:rounded-lg shadow-lg transition transform active:scale-95 text-xs sm:text-sm md:text-lg whitespace-nowrap ml-1 flex-shrink-0 h-8 sm:h-10 md:h-auto">
-                      발사
-                    </button>
-                  </div>
-                </form>
-              )}
+                <div className="flex gap-1 md:gap-3 items-center w-full justify-center">
+                  {problem.type === 'reduce' ? (
+                    <div className="flex items-center gap-1 md:gap-2">
+                      <input type="number" autoFocus value={inputN} onChange={e => setInputN(e.target.value)} placeholder="분자" className="w-10 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-sm sm:text-base md:text-xl font-black bg-stone-800 border md:border-2 border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                      <span className="text-stone-500 text-lg md:text-2xl font-light">/</span>
+                      <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="분모" className="w-10 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-sm sm:text-base md:text-xl font-black bg-stone-800 border md:border-2 border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-0.5 md:gap-2">
+                      <input type="number" autoFocus value={inputN} onChange={e => setInputN(e.target.value)} placeholder="분자" className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                      <span className="text-stone-500 text-sm md:text-2xl font-light">/</span>
+                      <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="공통" className="w-9 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                      <span className="text-amber-500 font-bold text-xs sm:text-sm md:text-2xl mx-0.5 md:mx-2 pb-1">,</span>
+                      <input type="number" value={inputN2} onChange={e => setInputN2(e.target.value)} placeholder="분자" className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                      <span className="text-stone-500 text-sm md:text-2xl font-light">/</span>
+                      <input type="number" value={inputD} onChange={e => setInputD(e.target.value)} placeholder="공통" className="w-9 h-8 sm:w-12 sm:h-10 md:w-16 md:h-12 text-center text-xs sm:text-sm md:text-xl font-black bg-stone-800 border border-stone-600 rounded text-amber-100 focus:border-amber-400 outline-none transition-colors px-0" />
+                    </div>
+                  )}
+                  <button type="submit" className="bg-gradient-to-t from-amber-600 to-amber-400 hover:from-amber-500 hover:to-amber-300 text-stone-900 font-black px-2 sm:px-4 md:px-6 py-1.5 md:py-3 rounded md:rounded-lg shadow-lg transition transform active:scale-95 text-xs sm:text-sm md:text-lg whitespace-nowrap ml-1 flex-shrink-0 h-8 sm:h-10 md:h-auto">
+                    정답!
+                  </button>
+                </div>
+              </form>
+              <div className="h-5 md:h-6 text-xs sm:text-sm md:text-lg font-black flex items-center">
+                {solveFx?.type === 'correct' && <span className="text-emerald-400 animate-bounce-short">+{solveFx.amt}G 획득! 🪙</span>}
+                {solveFx?.type === 'wrong' && <span className="text-rose-400">앗, 다시 풀어봐요!</span>}
+              </div>
             </div>
           </div>
         </div>
