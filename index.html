@@ -47,6 +47,51 @@
     input[type="number"] {
       -moz-appearance: textfield;
     }
+    /* === 모험(RPG) 탭 애니메이션 === */
+    @keyframes adv-shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+    .adv-shake { animation: adv-shake 0.4s ease-in-out; }
+    @keyframes adv-lunge-right {
+      0%, 100% { transform: translateX(0); }
+      40% { transform: translateX(40px) scale(1.08); }
+    }
+    .adv-lunge-right { animation: adv-lunge-right 0.45s ease-out; }
+    @keyframes adv-lunge-left {
+      0%, 100% { transform: translateX(0); }
+      40% { transform: translateX(-40px) scale(1.08); }
+    }
+    .adv-lunge-left { animation: adv-lunge-left 0.45s ease-out; }
+    @keyframes adv-hit {
+      0%, 100% { filter: none; }
+      50% { filter: brightness(2.2) drop-shadow(0 0 12px #f87171); }
+    }
+    .adv-hit { animation: adv-hit 0.4s ease-in-out; }
+    @keyframes adv-pop {
+      0% { opacity: 0; transform: translateY(0) scale(0.6); }
+      25% { opacity: 1; transform: translateY(-14px) scale(1.25); }
+      100% { opacity: 0; transform: translateY(-70px) scale(1); }
+    }
+    .adv-pop { animation: adv-pop 1s ease-out forwards; }
+    @keyframes adv-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .adv-float { animation: adv-float 2.6s ease-in-out infinite; }
+    @keyframes adv-glow {
+      0%, 100% { text-shadow: 0 0 18px #fde047, 0 0 36px #f59e0b; transform: scale(1); }
+      50% { text-shadow: 0 0 28px #fde047, 0 0 64px #f59e0b; transform: scale(1.06); }
+    }
+    .adv-glow { animation: adv-glow 1.4s ease-in-out infinite; }
+    @keyframes adv-spin-in {
+      from { opacity: 0; transform: rotate(-12deg) scale(0.7); }
+      to { opacity: 1; transform: rotate(0) scale(1); }
+    }
+    .adv-spin-in { animation: adv-spin-in 0.5s cubic-bezier(.34,1.56,.64,1) forwards; }
   </style>
 </head>
 <body class="bg-slate-100 overflow-hidden">
@@ -70,6 +115,7 @@
     const Swords = ({ size = 24, className = "" }) => (<svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline><line x1="5" y1="14" x2="9" y2="10"></line><line x1="4" y1="16" x2="8" y2="20"></line><line x1="3" y1="19" x2="5" y2="21"></line></svg>);
     const BookOpen = ({ size = 24, className = "" }) => (<svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>);
     const SettingsIcon = ({ size = 24, className = "" }) => (<svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>);
+    const Sparkles = ({ size = 24, className = "" }) => (<svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"></path></svg>);
 
     // ==========================================
     // 수학 유틸리티 및 문제 생성 함수
@@ -131,6 +177,128 @@
       }
       return problem;
     };
+
+    // ==========================================
+    // 모험(RPG) 전투용 문제 + 4지선다 보기 생성
+    // ==========================================
+    const shuffleArr = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    // 약분 문제 한 개 생성
+    const makeReduceProblem = (difficulty) => {
+      const maxBase = 6 + difficulty * 2;
+      let n, d, g;
+      do {
+        d = Math.floor(Math.random() * (maxBase * 2)) + 4;
+        n = Math.floor(Math.random() * (d - 1)) + 1;
+        g = getGCD(n, d);
+      } while (g === 1);
+      return { kind: 'reduce', n, d, ansN: n / g, ansD: d / g };
+    };
+
+    // 통분 문제 한 개 생성
+    const makeCommonProblem = (difficulty) => {
+      const maxBase = 6 + difficulty * 2;
+      let d1 = Math.floor(Math.random() * maxBase) + 2;
+      let d2 = Math.floor(Math.random() * maxBase) + 2;
+      while (d1 === d2) d2 = Math.floor(Math.random() * maxBase) + 2;
+      const n1 = Math.floor(Math.random() * (d1 - 1)) + 1;
+      const n2 = Math.floor(Math.random() * (d2 - 1)) + 1;
+      const lcm = getLCM(d1, d2);
+      return {
+        kind: 'common',
+        n1, d1, n2, d2,
+        ansN1: n1 * (lcm / d1), ansN2: n2 * (lcm / d2), ansD: lcm
+      };
+    };
+
+    // 종류(reduce / common / mixed)와 난이도로 문제 + 보기 4개 생성
+    const makeBattleProblem = (kind, difficulty) => {
+      const realKind = kind === 'mixed' ? (Math.random() < 0.5 ? 'reduce' : 'common') : kind;
+      const p = realKind === 'reduce' ? makeReduceProblem(difficulty) : makeCommonProblem(difficulty);
+
+      if (p.kind === 'reduce') {
+        const correct = { n: p.ansN, d: p.ansD };
+        const keyOf = (o) => `${o.n}/${o.d}`;
+        const used = new Set([keyOf(correct)]);
+        const choices = [{ ...correct, correct: true }];
+        const candidates = [
+          { n: p.ansN + 1, d: p.ansD },
+          { n: p.ansN, d: p.ansD + 1 },
+          { n: p.ansN - 1, d: p.ansD },
+          { n: p.n, d: p.d },            // 약분하지 않은 원래 분수
+          { n: p.ansN, d: p.ansD - 1 },
+          { n: p.ansN + 1, d: p.ansD + 1 }
+        ];
+        for (const c of shuffleArr(candidates)) {
+          if (choices.length >= 4) break;
+          if (c.n >= 1 && c.d >= 2 && c.n < c.d && !used.has(keyOf(c))) {
+            used.add(keyOf(c));
+            choices.push({ ...c, correct: false });
+          }
+        }
+        let guard = 0;
+        while (choices.length < 4 && guard++ < 40) {
+          const c = { n: p.ansN, d: p.ansD + 1 + Math.floor(Math.random() * 4) };
+          if (c.n < c.d && !used.has(keyOf(c))) { used.add(keyOf(c)); choices.push({ ...c, correct: false }); }
+        }
+        return { ...p, qText: `${p.n}/${p.d}`, choices: shuffleArr(choices) };
+      } else {
+        const correct = { n1: p.ansN1, n2: p.ansN2, d: p.ansD };
+        const keyOf = (o) => `${o.n1}/${o.d},${o.n2}/${o.d}`;
+        const used = new Set([keyOf(correct)]);
+        const choices = [{ ...correct, correct: true }];
+        const product = p.d1 * p.d2;
+        const candidates = [
+          { n1: p.ansN1 + 1, n2: p.ansN2, d: p.ansD },
+          { n1: p.ansN1, n2: p.ansN2 + 1, d: p.ansD },
+          { n1: p.ansN2, n2: p.ansN1, d: p.ansD },               // 분자 자리 바꿈
+          { n1: p.n1 * p.d2, n2: p.n2 * p.d1, d: product },        // 최소공배수 대신 두 분모의 곱
+          { n1: p.ansN1 - 1, n2: p.ansN2, d: p.ansD },
+          { n1: p.ansN1, n2: p.ansN2 - 1, d: p.ansD }
+        ];
+        for (const c of shuffleArr(candidates)) {
+          if (choices.length >= 4) break;
+          if (c.n1 >= 1 && c.n2 >= 1 && c.d >= 2 && c.n1 < c.d && c.n2 < c.d && !used.has(keyOf(c))) {
+            used.add(keyOf(c));
+            choices.push({ ...c, correct: false });
+          }
+        }
+        let guard = 0;
+        while (choices.length < 4 && guard++ < 40) {
+          const c = { n1: p.ansN1, n2: Math.min(p.ansN2 + 1 + Math.floor(Math.random() * 3), p.ansD - 1), d: p.ansD };
+          if (c.n2 >= 1 && !used.has(keyOf(c))) { used.add(keyOf(c)); choices.push({ ...c, correct: false }); }
+        }
+        return { ...p, qText: `${p.n1}/${p.d1} 와 ${p.n2}/${p.d2}`, choices: shuffleArr(choices) };
+      }
+    };
+
+    // 모험 캐릭터 정의 (성장형)
+    const HEROES = {
+      mage:    { id: 'mage',    name: '마법사 메릴', emoji: '🧙', maxHp: 70,  atk: 30, color: 'violet', tag: '강한 공격, 적은 체력', skill: '✨' },
+      warrior: { id: 'warrior', name: '전사 강철',   emoji: '🛡️', maxHp: 120, atk: 18, color: 'rose',   tag: '튼튼한 체력, 안정적', skill: '⚔️' },
+      archer:  { id: 'archer',  name: '궁수 바람',   emoji: '🏹', maxHp: 95,  atk: 24, color: 'emerald',tag: '균형 잡힌 능력치',   skill: '🎯' }
+    };
+
+    // 모험 스테이지 정의
+    const ADV_STAGES = [
+      { id: 1, name: '약분의 숲',     icon: '🌲', kind: 'reduce', difficulty: 1, count: 5, mhp: 45, matk: 8,  desc: '약분 기초', monsters: ['🟢','🍄','🐛'] },
+      { id: 2, name: '약분의 동굴',   icon: '🕳️', kind: 'reduce', difficulty: 2, count: 6, mhp: 60, matk: 12, desc: '약분 심화', monsters: ['🦇','🕷️','🐻'] },
+      { id: 3, name: '약분 마왕성',   icon: '🏰', kind: 'reduce', difficulty: 3, count: 6, mhp: 75, matk: 15, desc: '약분 보스', monsters: ['💀','👺','👹'] },
+      { id: 4, name: '통분의 호수',   icon: '🌊', kind: 'common', difficulty: 1, count: 5, mhp: 55, matk: 10, desc: '통분 기초', monsters: ['🐟','🪼','🐢'] },
+      { id: 5, name: '통분의 설산',   icon: '⛰️', kind: 'common', difficulty: 2, count: 6, mhp: 70, matk: 14, desc: '통분 심화', monsters: ['🦅','🐺','🧊'] },
+      { id: 6, name: '통분 마왕성',   icon: '🌙', kind: 'common', difficulty: 3, count: 6, mhp: 85, matk: 17, desc: '통분 보스', monsters: ['👻','🦹','🧟'] },
+      { id: 7, name: '최후의 결전',   icon: '👑', kind: 'mixed',  difficulty: 3, count: 8, mhp: 95, matk: 19, desc: '약분+통분', monsters: ['🔢','🐲','👑'] }
+    ];
+
+    const ADV_SAVE_KEY = 'fractionAdventureSave_v1';
+    const expToNext = (lvl) => 40 + lvl * 25;
 
     // 공통 경로 상수
     const GAME_PATH = [
@@ -199,6 +367,12 @@
               >
                 {isDefenseUnlocked ? <Shield size={20} /> : <Lock size={18} />} <span>디펜스</span><span className="hidden sm:inline"> 게임</span>
               </button>
+              <button
+                onClick={() => setActiveTab('adventure')}
+                className={`flex-1 min-w-[100px] sm:min-w-[140px] py-3 md:py-4 px-2 text-sm sm:text-base md:text-lg font-bold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all whitespace-nowrap ${activeTab === 'adventure' ? 'bg-white text-violet-600 border-t-4 border-violet-600 shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+              >
+                <Sparkles size={20} /> <span>모험</span><span className="hidden sm:inline"> RPG</span>
+              </button>
             </div>
 
             {/* 스크롤 가능한 컨텐츠 영역 */}
@@ -214,6 +388,9 @@
               </div>
               <div className={`w-full h-full flex flex-col absolute inset-0 overflow-y-auto bg-stone-800 ${activeTab === 'game' ? 'opacity-100 z-10' : 'opacity-0 -z-10 hidden'}`}>
                 <DefenseGameTab isUnlocked={isDefenseUnlocked} requiredCount={targetCount} currentCount={solvedCount} onGoToPractice={() => setActiveTab('practice')} isActive={activeTab === 'game'} />
+              </div>
+              <div className={`w-full h-full flex flex-col absolute inset-0 overflow-hidden ${activeTab === 'adventure' ? 'opacity-100 z-10' : 'opacity-0 -z-10 hidden'}`}>
+                <AdventureTab isActive={activeTab === 'adventure'} />
               </div>
             </div>
 
@@ -1253,6 +1430,437 @@
               )}
             </div>
           </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 4. 모험(RPG) 탭 - 캐릭터 성장형
+    // ==========================================
+
+    // 분수 한 개를 분자/분모 형태로 보기 좋게 표시
+    const FracView = ({ n, d, className = "" }) => (
+      <span className={`inline-flex flex-col items-center align-middle leading-tight mx-1 ${className}`}>
+        <span className="px-2 border-b-2 border-current">{n}</span>
+        <span className="px-2">{d}</span>
+      </span>
+    );
+
+    const HERO_THEME = {
+      mage:    { grad: 'from-violet-500 to-fuchsia-500',  ring: 'ring-violet-400',  text: 'text-violet-200',  badge: 'bg-violet-500' },
+      warrior: { grad: 'from-rose-500 to-orange-500',     ring: 'ring-rose-400',    text: 'text-rose-200',    badge: 'bg-rose-500' },
+      archer:  { grad: 'from-emerald-500 to-teal-500',    ring: 'ring-emerald-400', text: 'text-emerald-200', badge: 'bg-emerald-500' }
+    };
+
+    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+    function AdventureTab({ isActive }) {
+      const [phase, setPhase] = useState('select');     // select | map | battle | clear | gameover | complete
+      const [heroId, setHeroId] = useState(null);
+      const [level, setLevel] = useState(1);
+      const [exp, setExp] = useState(0);
+      const [maxHp, setMaxHp] = useState(0);
+      const [hp, setHp] = useState(0);
+      const [atk, setAtk] = useState(0);
+      const [progress, setProgress] = useState({});     // { stageId: stars }
+
+      const [stageId, setStageId] = useState(1);
+      const [monstersDefeated, setMonstersDefeated] = useState(0);
+      const [monster, setMonster] = useState(null);
+      const [problem, setProblem] = useState(null);
+      const [streak, setStreak] = useState(0);
+      const [locked, setLocked] = useState(false);
+      const [pickedIdx, setPickedIdx] = useState(-1);
+      const [feedback, setFeedback] = useState(null);    // 'correct' | 'wrong'
+      const [popups, setPopups] = useState([]);
+      const [anim, setAnim] = useState({ hero: '', monster: '' });
+      const [levelBanner, setLevelBanner] = useState(null);
+      const [clearStars, setClearStars] = useState(0);
+      const [loaded, setLoaded] = useState(false);
+
+      const popupId = useRef(0);
+      const timers = useRef([]);
+      const wrongRef = useRef(0);
+
+      const addTimer = (fn, ms) => { const t = setTimeout(fn, ms); timers.current.push(t); return t; };
+      const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+      useEffect(() => () => clearTimers(), []);
+
+      // 저장 불러오기 (최초 1회)
+      useEffect(() => {
+        try {
+          const raw = localStorage.getItem(ADV_SAVE_KEY);
+          if (raw) {
+            const s = JSON.parse(raw);
+            if (s && s.heroId && HEROES[s.heroId]) {
+              setHeroId(s.heroId);
+              setLevel(s.level || 1);
+              setExp(s.exp || 0);
+              setMaxHp(s.maxHp || HEROES[s.heroId].maxHp);
+              setHp(s.maxHp || HEROES[s.heroId].maxHp);
+              setAtk(s.atk || HEROES[s.heroId].atk);
+              setProgress(s.progress || {});
+              setPhase('map');
+            }
+          }
+        } catch (e) {}
+        setLoaded(true);
+      }, []);
+
+      // 성장/진행 저장
+      useEffect(() => {
+        if (!loaded || !heroId) return;
+        try {
+          localStorage.setItem(ADV_SAVE_KEY, JSON.stringify({ heroId, level, exp, maxHp, atk, progress }));
+        } catch (e) {}
+      }, [loaded, heroId, level, exp, maxHp, atk, progress]);
+
+      const pushPopup = (text, side, kind) => {
+        const id = popupId.current++;
+        setPopups(p => [...p, { id, text, side, kind }]);
+        addTimer(() => setPopups(p => p.filter(x => x.id !== id)), 1000);
+      };
+
+      const buildMonster = (stage, idx) => {
+        const isBoss = idx === stage.count - 1;
+        const grow = 1 + idx * 0.08;
+        let mhp = Math.round(stage.mhp * grow);
+        let matk = Math.round(stage.matk * (1 + idx * 0.05));
+        if (isBoss) mhp = Math.round(mhp * 1.5);
+        const emoji = isBoss ? stage.monsters[stage.monsters.length - 1] : stage.monsters[idx % stage.monsters.length];
+        return { emoji, hp: mhp, maxHp: mhp, atk: matk, isBoss };
+      };
+
+      const pickHero = (id) => {
+        const h = HEROES[id];
+        setHeroId(id);
+        setLevel(1); setExp(0);
+        setMaxHp(h.maxHp); setHp(h.maxHp); setAtk(h.atk);
+        setProgress({});
+        try { localStorage.removeItem(ADV_SAVE_KEY); } catch (e) {}
+        setPhase('map');
+      };
+
+      const startStage = (sid) => {
+        const stage = ADV_STAGES.find(s => s.id === sid);
+        clearTimers();
+        setStageId(sid);
+        setMonstersDefeated(0);
+        setStreak(0);
+        wrongRef.current = 0;
+        setHp(maxHp);
+        setMonster(buildMonster(stage, 0));
+        setProblem(makeBattleProblem(stage.kind, stage.difficulty));
+        setLocked(false); setPickedIdx(-1); setFeedback(null); setPopups([]);
+        setPhase('battle');
+      };
+
+      const stage = ADV_STAGES.find(s => s.id === stageId);
+
+      const handleAnswer = (choice, idx) => {
+        if (locked || phase !== 'battle' || !monster) return;
+        setLocked(true);
+        setPickedIdx(idx);
+
+        if (choice.correct) {
+          const dmg = Math.max(5, atk + randInt(-2, 4));
+          const newMonsterHp = Math.max(0, monster.hp - dmg);
+          const gained = 18 + Math.min(streak, 5) * 4;
+
+          // 레벨업 계산
+          let nl = level, ne = exp + gained, nmax = maxHp, natk = atk, nhp = hp, leveled = false;
+          while (nl < 10 && ne >= expToNext(nl)) {
+            ne -= expToNext(nl); nl++; nmax += 12; natk += 4;
+            nhp = Math.min(nmax, nhp + Math.round(nmax * 0.25)); leveled = true;
+          }
+          if (nl >= 10) ne = Math.min(ne, expToNext(10));
+
+          setMonster(m => ({ ...m, hp: newMonsterHp }));
+          setExp(ne); setLevel(nl); setMaxHp(nmax); setAtk(natk); setHp(nhp);
+          setStreak(s => s + 1);
+          setFeedback('correct');
+          setAnim({ hero: 'lunge', monster: 'hit' });
+          pushPopup('-' + dmg, 'monster', 'dmg');
+          pushPopup('+' + gained + ' EXP', 'hero', 'exp');
+          if (leveled) { setLevelBanner({ level: nl }); addTimer(() => setLevelBanner(null), 1700); }
+
+          const monsterDead = newMonsterHp <= 0;
+          addTimer(() => {
+            setAnim({ hero: '', monster: '' });
+            if (monsterDead) {
+              const defeated = monstersDefeated + 1;
+              if (defeated >= stage.count) {
+                // 스테이지 클리어
+                const w = wrongRef.current;
+                const stars = w <= 1 ? 3 : (w <= 4 ? 2 : 1);
+                setClearStars(stars);
+                setProgress(prev => ({ ...prev, [stage.id]: Math.max(prev[stage.id] || 0, stars) }));
+                setHp(nmax);
+                setMonstersDefeated(defeated);
+                setPhase(stage.id === ADV_STAGES.length ? 'complete' : 'clear');
+                setLocked(false); setPickedIdx(-1); setFeedback(null);
+              } else {
+                setMonstersDefeated(defeated);
+                setMonster(buildMonster(stage, defeated));
+                setProblem(makeBattleProblem(stage.kind, stage.difficulty));
+                setLocked(false); setPickedIdx(-1); setFeedback(null);
+              }
+            } else {
+              setProblem(makeBattleProblem(stage.kind, stage.difficulty));
+              setLocked(false); setPickedIdx(-1); setFeedback(null);
+            }
+          }, 850);
+        } else {
+          const mdmg = Math.max(3, monster.atk + randInt(-2, 2));
+          const newHp = Math.max(0, hp - mdmg);
+          setHp(newHp);
+          setStreak(0);
+          wrongRef.current += 1;
+          setFeedback('wrong');
+          setAnim({ hero: 'hit', monster: 'lunge' });
+          pushPopup('-' + mdmg, 'hero', 'dmg');
+
+          const heroDead = newHp <= 0;
+          addTimer(() => {
+            setAnim({ hero: '', monster: '' });
+            if (heroDead) {
+              setPhase('gameover');
+            } else {
+              setProblem(makeBattleProblem(stage.kind, stage.difficulty));
+            }
+            setLocked(false); setPickedIdx(-1); setFeedback(null);
+          }, 1150);
+        }
+      };
+
+      const resetAll = () => {
+        try { localStorage.removeItem(ADV_SAVE_KEY); } catch (e) {}
+        clearTimers();
+        setHeroId(null); setLevel(1); setExp(0); setMaxHp(0); setHp(0); setAtk(0);
+        setProgress({}); setPhase('select');
+      };
+
+      const hero = heroId ? HEROES[heroId] : null;
+      const theme = heroId ? HERO_THEME[heroId] : HERO_THEME.mage;
+      const hpPct = maxHp > 0 ? Math.round((hp / maxHp) * 100) : 0;
+      const hpColor = hpPct > 50 ? 'bg-emerald-500' : hpPct > 25 ? 'bg-amber-500' : 'bg-rose-500';
+      const expNeed = expToNext(Math.min(level, 10));
+      const expPct = level >= 10 ? 100 : Math.min(100, Math.round((exp / expNeed) * 100));
+
+      // ===== 선택 화면 =====
+      const renderSelect = () => (
+        <div className="animate-fade-in flex flex-col items-center w-full max-w-3xl mx-auto px-4 py-6 md:py-10">
+          <div className="text-4xl md:text-6xl mb-2 adv-float">🧙⚔️🏹</div>
+          <h2 className="text-2xl md:text-4xl font-black text-white text-center drop-shadow">약분·통분 대모험</h2>
+          <p className="text-violet-200 text-sm md:text-lg mt-2 mb-6 text-center break-keep">함께 모험을 떠날 영웅을 골라봐!<br className="sm:hidden"/> 문제를 맞히면 몬스터를 무찌르고 성장해요.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 w-full">
+            {Object.values(HEROES).map(h => {
+              const t = HERO_THEME[h.id];
+              return (
+                <button key={h.id} onClick={() => pickHero(h.id)}
+                  className={`bg-white/10 hover:bg-white/20 border-2 border-white/10 hover:border-white/40 rounded-2xl p-4 md:p-5 flex flex-col items-center gap-2 transition-all hover:-translate-y-1 ring-offset-2 ring-offset-transparent`}>
+                  <div className={`text-5xl md:text-6xl w-20 h-20 md:w-24 md:h-24 flex items-center justify-center rounded-full bg-gradient-to-br ${t.grad} shadow-lg`}>{h.emoji}</div>
+                  <div className="font-black text-white text-base md:text-lg">{h.name}</div>
+                  <div className="text-[11px] md:text-xs text-slate-200 break-keep text-center">{h.tag}</div>
+                  <div className="flex gap-2 text-xs md:text-sm mt-1">
+                    <span className="text-emerald-300 font-bold">❤️ {h.maxHp}</span>
+                    <span className="text-rose-300 font-bold">⚔️ {h.atk}</span>
+                  </div>
+                  <div className="mt-1 text-xs font-black text-white bg-white/20 rounded-full px-4 py-1.5">선택하기</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+
+      // ===== 지도 화면 =====
+      const renderMap = () => (
+        <div className="animate-fade-in flex flex-col w-full max-w-3xl mx-auto px-4 py-5 md:py-8">
+          {/* 영웅 상태 카드 */}
+          <div className="bg-white/10 rounded-2xl p-4 mb-5 flex items-center gap-3 md:gap-4 border border-white/10">
+            <div className={`text-3xl md:text-4xl w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full bg-gradient-to-br ${theme.grad} shadow`}>{hero?.emoji}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-black text-white text-sm md:text-base truncate">{hero?.name}</span>
+                <span className={`${theme.badge} text-white text-xs md:text-sm font-black px-2.5 py-0.5 rounded-full whitespace-nowrap`}>Lv.{level}</span>
+              </div>
+              <div className="mt-1.5">
+                <div className="flex justify-between text-[10px] md:text-xs text-slate-300 mb-0.5"><span>❤️ {hp}/{maxHp}</span><span>⚔️ {atk}</span></div>
+                <div className="w-full bg-black/30 rounded-full h-1.5 overflow-hidden"><div className={`${hpColor} h-full rounded-full transition-all`} style={{ width: hpPct + '%' }}></div></div>
+                <div className="flex justify-between text-[10px] md:text-xs text-violet-200 mt-1 mb-0.5"><span>EXP</span><span>{level >= 10 ? 'MAX' : exp + '/' + expNeed}</span></div>
+                <div className="w-full bg-black/30 rounded-full h-1.5 overflow-hidden"><div className="bg-violet-400 h-full rounded-full transition-all" style={{ width: expPct + '%' }}></div></div>
+              </div>
+            </div>
+          </div>
+
+          <h3 className="text-white font-black text-lg md:text-xl mb-3 flex items-center gap-2"><Sparkles size={20}/> 모험 지도</h3>
+          <div className="flex flex-col gap-2.5">
+            {ADV_STAGES.map((s, i) => {
+              const unlocked = i === 0 || (progress[ADV_STAGES[i - 1].id] || 0) > 0;
+              const stars = progress[s.id] || 0;
+              return (
+                <button key={s.id} disabled={!unlocked} onClick={() => unlocked && startStage(s.id)}
+                  className={`text-left rounded-2xl p-3.5 md:p-4 flex items-center gap-3 border transition-all ${unlocked ? 'bg-white/10 hover:bg-white/20 border-white/10 hover:border-white/40 hover:translate-x-1' : 'bg-black/20 border-white/5 opacity-50 cursor-not-allowed'}`}>
+                  <div className="text-2xl md:text-3xl w-11 h-11 md:w-12 md:h-12 flex items-center justify-center rounded-xl bg-black/30 flex-shrink-0">{unlocked ? s.icon : '🔒'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-white text-sm md:text-base">{s.id}. {s.name}</div>
+                    <div className="text-[11px] md:text-xs text-slate-300">{s.desc} · 몬스터 {s.count}마리</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full ${s.kind === 'reduce' ? 'bg-blue-500' : s.kind === 'common' ? 'bg-emerald-500' : 'bg-fuchsia-500'} text-white`}>{s.kind === 'reduce' ? '약분' : s.kind === 'common' ? '통분' : '약분+통분'}</span>
+                    {unlocked && <span className="text-amber-300 text-sm md:text-base tracking-tight">{'★'.repeat(stars)}{'☆'.repeat(3 - stars)}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={resetAll} className="mt-5 mx-auto text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2">처음부터 다시 시작 (영웅 다시 선택)</button>
+        </div>
+      );
+
+      // ===== 보기(선택지) 렌더 =====
+      const renderChoice = (c, idx) => {
+        let stateCls = 'bg-white/10 hover:bg-white/25 border-white/20';
+        if (feedback) {
+          if (c.correct) stateCls = 'bg-emerald-500/90 border-emerald-300 scale-105';
+          else if (idx === pickedIdx) stateCls = 'bg-rose-500/90 border-rose-300 adv-shake';
+          else stateCls = 'bg-white/5 border-white/10 opacity-60';
+        }
+        return (
+          <button key={idx} disabled={locked} onClick={() => handleAnswer(c, idx)}
+            className={`rounded-2xl border-2 py-3 md:py-4 px-2 flex items-center justify-center text-white font-black text-xl md:text-3xl transition-all ${stateCls}`}>
+            {problem.kind === 'reduce'
+              ? <FracView n={c.n} d={c.d} />
+              : <span className="flex items-center"><FracView n={c.n1} d={c.d} /><span className="mx-0.5 text-base md:text-2xl">,</span><FracView n={c.n2} d={c.d} /></span>}
+          </button>
+        );
+      };
+
+      // ===== 전투 화면 =====
+      const renderBattle = () => {
+        const mPct = monster ? Math.round((monster.hp / monster.maxHp) * 100) : 0;
+        return (
+          <div className="flex flex-col h-full w-full">
+            {/* 상단 상태바 */}
+            <div className="flex-shrink-0 bg-black/30 px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10">
+              <button onClick={() => { clearTimers(); setPhase('map'); }} className="text-slate-300 hover:text-white text-xs md:text-sm font-bold flex items-center gap-1 flex-shrink-0">← 지도</button>
+              <div className="text-center min-w-0">
+                <div className="text-white font-black text-xs md:text-sm truncate">{stage.icon} {stage.name}</div>
+                <div className="text-[10px] md:text-xs text-amber-300">처치 {monstersDefeated}/{stage.count}</div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <span className={`${theme.badge} text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-full`}>Lv.{level}</span>
+                <div className="w-14 md:w-20"><div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden"><div className="bg-violet-400 h-full" style={{ width: expPct + '%' }}></div></div></div>
+              </div>
+            </div>
+
+            {/* 전투 무대 */}
+            <div className="relative flex-1 min-h-0 flex items-center justify-around px-4 bg-gradient-to-b from-transparent to-black/30 overflow-hidden">
+              {/* 몬스터 */}
+              <div className="flex flex-col items-center gap-1.5 w-32 md:w-44">
+                {monster?.isBoss && <span className="text-rose-300 text-xs font-black animate-pulse">⚠ 보스</span>}
+                <div className={`text-6xl md:text-8xl ${anim.monster === 'hit' ? 'adv-hit' : ''} ${anim.monster === 'lunge' ? 'adv-lunge-right' : ''}`}>{monster?.emoji}</div>
+                <div className="w-full bg-black/40 rounded-full h-2 md:h-2.5 overflow-hidden border border-white/10"><div className="bg-rose-500 h-full rounded-full transition-all duration-300" style={{ width: mPct + '%' }}></div></div>
+                <div className="text-[10px] md:text-xs text-slate-300">{monster?.hp}/{monster?.maxHp}</div>
+              </div>
+
+              <div className="text-2xl md:text-4xl font-black text-white/40">VS</div>
+
+              {/* 영웅 */}
+              <div className="flex flex-col items-center gap-1.5 w-32 md:w-44">
+                <div className={`text-6xl md:text-8xl ${anim.hero === 'hit' ? 'adv-hit' : ''} ${anim.hero === 'lunge' ? 'adv-lunge-left' : ''}`}>{hero?.emoji}</div>
+                <div className="w-full bg-black/40 rounded-full h-2 md:h-2.5 overflow-hidden border border-white/10"><div className={`${hpColor} h-full rounded-full transition-all duration-300`} style={{ width: hpPct + '%' }}></div></div>
+                <div className="text-[10px] md:text-xs text-slate-300">{hp}/{maxHp}</div>
+              </div>
+
+              {/* 데미지 팝업 */}
+              {popups.map(p => (
+                <div key={p.id} className={`adv-pop absolute top-1/3 font-black text-xl md:text-3xl pointer-events-none ${p.side === 'monster' ? 'left-[18%]' : 'right-[18%]'} ${p.kind === 'dmg' ? 'text-rose-400' : p.kind === 'exp' ? 'text-violet-300' : 'text-emerald-300'}`}>{p.text}</div>
+              ))}
+
+              {/* 레벨업 배너 */}
+              {levelBanner && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/60 rounded-3xl px-8 py-5 text-center adv-spin-in">
+                    <div className="text-amber-300 font-black text-2xl md:text-4xl adv-glow">⭐ LEVEL UP! ⭐</div>
+                    <div className="text-white font-black text-lg md:text-2xl mt-1">Lv.{levelBanner.level} · 체력+12 공격+4</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 문제 + 보기 */}
+            <div className="flex-shrink-0 bg-black/40 border-t border-white/10 p-3 md:p-5">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className={`text-[10px] md:text-xs font-black px-2.5 py-0.5 rounded-full text-white ${problem?.kind === 'reduce' ? 'bg-blue-500' : 'bg-emerald-500'}`}>{problem?.kind === 'reduce' ? '약분' : '통분'}</span>
+                {streak >= 2 && <span className="text-amber-300 text-xs md:text-sm font-bold">🔥 연속 {streak}!</span>}
+                {feedback === 'correct' && <span className="text-emerald-300 text-xs md:text-sm font-bold">정답! 공격 성공 ⚔️</span>}
+                {feedback === 'wrong' && <span className="text-rose-300 text-xs md:text-sm font-bold">아쉬워요! 초록색이 정답이에요</span>}
+              </div>
+              <div className="text-center text-white font-black text-2xl md:text-4xl mb-3 flex items-center justify-center flex-wrap gap-x-1">
+                {problem?.kind === 'reduce'
+                  ? <span className="flex items-center"><FracView n={problem.n} d={problem.d} className="text-amber-300" /><span className="text-lg md:text-2xl ml-2 font-bold">를 약분하면?</span></span>
+                  : <span className="flex items-center flex-wrap justify-center"><FracView n={problem?.n1} d={problem?.d1} className="text-amber-300" /><span className="text-lg md:text-2xl mx-1 font-bold">와</span><FracView n={problem?.n2} d={problem?.d2} className="text-amber-300" /><span className="text-lg md:text-2xl ml-1 font-bold">를 통분하면?</span></span>}
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 md:gap-3 max-w-xl mx-auto">
+                {problem?.choices.map((c, i) => renderChoice(c, i))}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // ===== 클리어 / 게임오버 / 완료 화면 =====
+      const renderClear = () => (
+        <div className="animate-fade-in flex flex-col items-center justify-center h-full text-center px-6">
+          <div className="text-6xl md:text-7xl mb-3 adv-float">🏆</div>
+          <h2 className="text-2xl md:text-4xl font-black text-emerald-300">스테이지 클리어!</h2>
+          <div className="text-4xl md:text-5xl my-3 text-amber-300 tracking-widest">{'★'.repeat(clearStars)}{'☆'.repeat(3 - clearStars)}</div>
+          <p className="text-white font-bold text-lg">{stage?.name} 완료</p>
+          <p className="text-slate-300 text-sm mt-1">체력을 모두 회복했어요! 레벨 {level} · ⚔️ {atk}</p>
+          <div className="flex flex-col sm:flex-row gap-3 mt-7 w-full max-w-xs">
+            {stage && stage.id < ADV_STAGES.length &&
+              <button onClick={() => startStage(stage.id + 1)} className="flex-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-black py-3 rounded-xl shadow-lg hover:scale-105 transition">▶ 다음 스테이지</button>}
+            <button onClick={() => setPhase('map')} className="flex-1 bg-white/15 hover:bg-white/25 text-white font-bold py-3 rounded-xl transition">🗺️ 지도로</button>
+          </div>
+        </div>
+      );
+
+      const renderGameOver = () => (
+        <div className="animate-fade-in flex flex-col items-center justify-center h-full text-center px-6">
+          <div className="text-6xl md:text-7xl mb-3">💫</div>
+          <h2 className="text-2xl md:text-4xl font-black text-rose-300">앗, 쓰러졌어요!</h2>
+          <p className="text-slate-300 text-sm md:text-base mt-2 break-keep">괜찮아요. 천천히 다시 풀어보면 분명 클리어할 수 있어요!</p>
+          <div className="flex flex-col sm:flex-row gap-3 mt-7 w-full max-w-xs">
+            <button onClick={() => startStage(stageId)} className="flex-1 bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black py-3 rounded-xl shadow-lg hover:scale-105 transition">🔄 다시 도전</button>
+            <button onClick={() => setPhase('map')} className="flex-1 bg-white/15 hover:bg-white/25 text-white font-bold py-3 rounded-xl transition">🗺️ 지도로</button>
+          </div>
+        </div>
+      );
+
+      const renderComplete = () => (
+        <div className="animate-fade-in flex flex-col items-center justify-center h-full text-center px-6">
+          <div className="text-6xl md:text-8xl mb-3 adv-float">{hero?.emoji}</div>
+          <h2 className="text-2xl md:text-4xl font-black text-amber-300 adv-glow">🎉 모든 스테이지 클리어! 🎉</h2>
+          <p className="text-white font-bold text-lg md:text-xl mt-3">{hero?.name} · 최종 레벨 {level}</p>
+          <p className="text-slate-300 text-sm mt-1">약분과 통분의 진정한 마스터가 되었어요!</p>
+          <div className="text-4xl md:text-5xl my-4">🏆 ⭐ 🎖️</div>
+          <div className="flex flex-col sm:flex-row gap-3 mt-2 w-full max-w-xs">
+            <button onClick={() => setPhase('map')} className="flex-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-black py-3 rounded-xl shadow-lg hover:scale-105 transition">🗺️ 지도로</button>
+            <button onClick={resetAll} className="flex-1 bg-white/15 hover:bg-white/25 text-white font-bold py-3 rounded-xl transition">🔄 처음부터</button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="w-full h-full overflow-y-auto bg-gradient-to-b from-indigo-950 via-slate-900 to-violet-950">
+          {phase === 'select' && renderSelect()}
+          {phase === 'map' && renderMap()}
+          {phase === 'battle' && monster && problem && renderBattle()}
+          {phase === 'clear' && renderClear()}
+          {phase === 'gameover' && renderGameOver()}
+          {phase === 'complete' && renderComplete()}
         </div>
       );
     }
