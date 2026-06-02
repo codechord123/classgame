@@ -289,20 +289,30 @@
 
     const callGAS = (fn, ...args) => new Promise((resolve, reject) => {
       if (!isGAS()) return reject(new Error('not GAS'));
-      try { google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args); }
-      catch (e) { reject(e); }
+      let done = false;
+      const timer = setTimeout(() => { if (!done) { done = true; reject(new Error('서버 응답 시간 초과')); } }, 10000);
+      try {
+        google.script.run
+          .withSuccessHandler((v) => { if (!done) { done = true; clearTimeout(timer); resolve(v); } })
+          .withFailureHandler((e) => { if (!done) { done = true; clearTimeout(timer); reject(e); } })
+          [fn](...args);
+      } catch (e) { if (!done) { done = true; clearTimeout(timer); reject(e); } }
     });
 
     async function fetchLeaderboard() {
       if (isGAS()) {
-        try { const data = await callGAS('getLeaderboard'); if (Array.isArray(data)) return data; } catch {}
+        try {
+          const data = await callGAS('getLeaderboard');
+          if (Array.isArray(data)) return data;
+        } catch (e) { console.warn('getLeaderboard 실패, 로컬 사용:', e); }
       }
       return loadLocalLB();
     }
 
     async function submitScoreRemote(name, team, time) {
       if (isGAS()) {
-        try { const data = await callGAS('submitScore', name, team, time); if (Array.isArray(data)) return data; } catch {}
+        try { const data = await callGAS('submitScore', name, team, time); if (Array.isArray(data)) return data; }
+        catch (e) { console.warn('submitScore 실패:', e); }
       }
       const entry = { name, team: Number(team) || 0, time, date: Date.now() };
       const updated = [...loadLocalLB(), entry];
@@ -312,7 +322,7 @@
 
     async function clearLeaderboardRemote(password) {
       if (isGAS()) {
-        await callGAS('clearLeaderboard', password); // throws on wrong password
+        await callGAS('clearLeaderboard', password); // throws on wrong password / timeout
         return [];
       }
       saveLocalLB([]);
@@ -335,6 +345,7 @@
       const [finalTime, setFinalTime] = useState(0);
       const [leaderboard, setLeaderboard] = useState([]);
       const [lbBusy, setLbBusy] = useState(false);
+      const [lbUpdatedAt, setLbUpdatedAt] = useState(0);
       const [showPwModal, setShowPwModal] = useState(false);
       const [pwInput, setPwInput] = useState('');
       const [lbTab, setLbTab] = useState('team'); // 'individual' | 'team'
@@ -351,9 +362,15 @@
 
       const refreshLB = useCallback(async () => {
         setLbBusy(true);
-        const data = await fetchLeaderboard();
-        setLeaderboard(data);
-        setLbBusy(false);
+        try {
+          const data = await fetchLeaderboard();
+          setLeaderboard(data);
+          setLbUpdatedAt(Date.now());
+        } catch (e) {
+          console.warn('refreshLB 오류:', e);
+        } finally {
+          setLbBusy(false);
+        }
       }, []);
 
       useEffect(() => { setUsingRemote(isGAS()); refreshLB(); }, [refreshLB]);
@@ -456,10 +473,12 @@
         try {
           const data = await clearLeaderboardRemote(pwInput);
           setLeaderboard(data);
+          setLbUpdatedAt(Date.now());
         } catch (e) {
-          alert(e.message || '비밀번호가 틀렸습니다.');
+          alert((e && e.message) || '비밀번호가 틀렸거나 서버 오류가 발생했습니다.');
+        } finally {
+          setLbBusy(false);
         }
-        setLbBusy(false);
       };
 
       const TeamPicker = ({ value, onChange }) => (
@@ -565,8 +584,13 @@
                 ? <span className="text-[10px] md:text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">실시간 공유</span>
                 : <span className="text-[10px] md:text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-bold">기기 저장</span>}
             </div>
-            <div className="flex gap-2">
-              <button onClick={refreshLB} disabled={lbBusy} className="text-xs font-bold text-slate-500 hover:text-indigo-600 disabled:opacity-50">🔄 새로고침</button>
+            <div className="flex gap-2 items-center">
+              {lbUpdatedAt > 0 && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {new Date(lbUpdatedAt).toLocaleTimeString('ko-KR', { hour12: false })} · {leaderboard.length}건
+                </span>
+              )}
+              <button onClick={refreshLB} disabled={lbBusy} className="text-xs font-bold text-slate-500 hover:text-indigo-600 disabled:opacity-50">{lbBusy ? '⏳' : '🔄'} 새로고침</button>
               <button onClick={clearLB} disabled={lbBusy} className="text-xs text-slate-400 hover:text-rose-500 underline disabled:opacity-50">초기화</button>
             </div>
           </div>
