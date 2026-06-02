@@ -352,7 +352,7 @@
 
     // ============== 메인 ==============
     const TOTAL_PROBLEMS = 30;
-    const PENALTY_MS = 3000;
+    const PENALTY_MS = 10000;
 
     function App() {
       const [screen, setScreen] = useState('title');
@@ -645,7 +645,7 @@
                 <ul className="list-disc list-inside space-y-0.5 marker:text-amber-500">
                   <li>총 <strong>30문제</strong> (약분/기약/동치/통분 무작위)</li>
                   <li>3장 카드 중 <strong>정답</strong> 선택 시 캐릭터 성장</li>
-                  <li>오답: <strong className="text-rose-600">+3초</strong> 페널티</li>
+                  <li>오답: <strong className="text-rose-600">+10초</strong> 페널티</li>
                   <li>완주 시 <strong>펑!</strong> 💥 + 기록 저장</li>
                   <li><strong>모둠전</strong>: 5명 합산 시간이 적은 모둠 승</li>
                 </ul>
@@ -748,7 +748,7 @@
                     </div>
 
                     {feedback === 'wrong' && (
-                      <div className="text-center text-rose-300 font-black text-lg md:text-2xl animate-fade-in">❌ 오답! +3초 페널티</div>
+                      <div className="text-center text-rose-300 font-black text-lg md:text-2xl animate-fade-in">❌ 오답! +10초 페널티</div>
                     )}
                     {feedback === 'correct' && (
                       <div className="text-center text-emerald-300 font-black text-lg md:text-2xl animate-fade-in">⭕ 정답!</div>
