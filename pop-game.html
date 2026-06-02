@@ -310,8 +310,11 @@
       return updated;
     }
 
-    async function clearLeaderboardRemote() {
-      if (isGAS()) { try { await callGAS('clearLeaderboard'); return []; } catch {} }
+    async function clearLeaderboardRemote(password) {
+      if (isGAS()) {
+        await callGAS('clearLeaderboard', password); // throws on wrong password
+        return [];
+      }
       saveLocalLB([]);
       return [];
     }
@@ -332,6 +335,8 @@
       const [finalTime, setFinalTime] = useState(0);
       const [leaderboard, setLeaderboard] = useState([]);
       const [lbBusy, setLbBusy] = useState(false);
+      const [showPwModal, setShowPwModal] = useState(false);
+      const [pwInput, setPwInput] = useState('');
       const [lbTab, setLbTab] = useState('team'); // 'individual' | 'team'
       const [confettiBits, setConfettiBits] = useState([]);
       const [usingRemote, setUsingRemote] = useState(false);
@@ -440,11 +445,20 @@
         refreshLB();
       };
 
-      const clearLB = async () => {
-        if (!confirm('명예의 전당을 모두 지울까요? (모든 학생 + 모둠 기록 삭제)')) return;
+      const clearLB = () => {
+        setPwInput('');
+        setShowPwModal(true);
+      };
+
+      const doActualClear = async () => {
+        setShowPwModal(false);
         setLbBusy(true);
-        const data = await clearLeaderboardRemote();
-        setLeaderboard(data);
+        try {
+          const data = await clearLeaderboardRemote(pwInput);
+          setLeaderboard(data);
+        } catch (e) {
+          alert(e.message || '비밀번호가 틀렸습니다.');
+        }
         setLbBusy(false);
       };
 
@@ -524,7 +538,26 @@
       );
 
       const LeaderboardSection = ({ highlight }) => (
-        <div className="text-left">
+        <>
+          {showPwModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowPwModal(false)}>
+              <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <h3 className="font-black text-slate-800 text-lg mb-1">🔒 선생님 인증</h3>
+                <p className="text-slate-500 text-sm mb-4">명예의 전당 전체 초기화는 선생님만 가능합니다.</p>
+                <input type="password" value={pwInput} onChange={e => setPwInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doActualClear()}
+                  placeholder="비밀번호" autoFocus
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 text-slate-800" />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowPwModal(false)}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition">취소</button>
+                  <button onClick={doActualClear}
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black py-2.5 rounded-xl shadow transition">초기화</button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="text-left">
           <div className="flex items-center justify-between mb-2">
             <div className="font-black text-slate-700 flex items-center gap-1.5">
               🏆 명예의 전당
@@ -544,7 +577,8 @@
           {lbBusy && leaderboard.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">불러오는 중...</div>}
           {lbTab === 'team' && <TeamLeaderboard stats={teamStats} highlightTeam={highlight?.team} />}
           {lbTab === 'individual' && <IndividualLeaderboard entries={playersBest} highlight={highlight} />}
-        </div>
+          </div>
+        </>
       );
 
       // ============== 화면 렌더 ==============

@@ -19,6 +19,7 @@
 
 const LB_PROP_KEY = 'LB_JSON_V1';
 const LB_MAX = 200;
+const TEACHER_PASSWORD = 'teacher1234'; // 선생님이 직접 원하는 비밀번호로 변경하세요
 
 function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('pop-game')
@@ -69,8 +70,11 @@ function submitScore(name, team, time) {
   }
 }
 
-// 클라이언트에서 google.script.run.clearLeaderboard() 로 호출
-function clearLeaderboard() {
+// 클라이언트에서 google.script.run.clearLeaderboard(password) 로 호출
+function clearLeaderboard(password) {
+  if (String(password) !== TEACHER_PASSWORD) {
+    throw new Error('비밀번호가 틀렸습니다.');
+  }
   PropertiesService.getScriptProperties().deleteProperty(LB_PROP_KEY);
   return [];
 }
