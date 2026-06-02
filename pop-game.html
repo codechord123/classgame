@@ -287,22 +287,35 @@
 
     const isGAS = () => typeof window !== 'undefined' && window.google && window.google.script && window.google.script.run;
 
-    const callGAS = (fn, ...args) => new Promise((resolve, reject) => {
-      if (!isGAS()) return reject(new Error('not GAS'));
-      let done = false;
-      const timer = setTimeout(() => { if (!done) { done = true; reject(new Error('서버 응답 시간 초과')); } }, 10000);
-      try {
-        google.script.run
-          .withSuccessHandler((v) => { if (!done) { done = true; clearTimeout(timer); resolve(v); } })
-          .withFailureHandler((e) => { if (!done) { done = true; clearTimeout(timer); reject(e); } })
-          [fn](...args);
-      } catch (e) { if (!done) { done = true; clearTimeout(timer); reject(e); } }
-    });
+    // GAS google.script.run 은 동적 [fn] 접근 + Babel 의 spread 변환과 잘 안 맞아서
+    // 함수마다 직접 호출하는 헬퍼를 만든다.
+    function runnerWithTimeout(timeoutMs) {
+      return function (callFn) {
+        return new Promise(function (resolve, reject) {
+          if (!isGAS()) { reject(new Error('not GAS')); return; }
+          var done = false;
+          var timer = setTimeout(function () {
+            if (!done) { done = true; reject(new Error('서버 응답 시간 초과')); }
+          }, timeoutMs);
+          try {
+            var runner = google.script.run
+              .withSuccessHandler(function (v) { if (!done) { done = true; clearTimeout(timer); resolve(v); } })
+              .withFailureHandler(function (e) {
+                if (!done) { done = true; clearTimeout(timer); reject(e instanceof Error ? e : new Error((e && e.message) || String(e))); }
+              });
+            callFn(runner);
+          } catch (e) {
+            if (!done) { done = true; clearTimeout(timer); reject(e); }
+          }
+        });
+      };
+    }
+    var runGAS = runnerWithTimeout(10000);
 
     async function fetchLeaderboard() {
       if (isGAS()) {
         try {
-          const data = await callGAS('getLeaderboard');
+          const data = await runGAS(function (r) { r.getLeaderboard(); });
           if (Array.isArray(data)) return data;
         } catch (e) { console.warn('getLeaderboard 실패, 로컬 사용:', e); }
       }
@@ -312,7 +325,7 @@
     async function submitScoreRemote(name, team, time) {
       if (isGAS()) {
         try {
-          const data = await callGAS('submitScore', name, team, time);
+          const data = await runGAS(function (r) { r.submitScore(name, team, time); });
           if (Array.isArray(data)) return { data, saved: 'remote', error: null };
         } catch (e) {
           const msg = (e && e.message) || String(e);
@@ -330,7 +343,7 @@
 
     async function clearLeaderboardRemote(password) {
       if (isGAS()) {
-        await callGAS('clearLeaderboard', password); // throws on wrong password / timeout
+        await runGAS(function (r) { r.clearLeaderboard(password); });
         return [];
       }
       saveLocalLB([]);
