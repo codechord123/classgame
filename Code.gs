@@ -28,26 +28,24 @@ function doGet(e) {
 }
 
 // 클라이언트에서 google.script.run.getLeaderboard() 로 호출
+// 모든 기록(원자료)을 그대로 반환. 클라이언트가 모둠/개인 통계를 계산.
 function getLeaderboard() {
   try {
     const raw = PropertiesService.getScriptProperties().getProperty(LB_PROP_KEY) || '[]';
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return [];
-    return list.sort(function(a, b) { return a.time - b.time; }).slice(0, 50);
+    return list;
   } catch (err) {
     return [];
   }
 }
 
-// 클라이언트에서 google.script.run.submitScore(name, time) 로 호출
-function submitScore(name, time) {
+// 클라이언트에서 google.script.run.submitScore(name, team, time) 로 호출
+// team: 1~5 (모둠 번호)
+function submitScore(name, team, time) {
   const props = PropertiesService.getScriptProperties();
-  const lock = LockService.getScriptLock(); // 동시 제출 충돌 방지
-  try {
-    lock.waitLock(5000);
-  } catch (e) {
-    // 잠금 실패해도 계속 진행
-  }
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(5000); } catch (e) {}
   try {
     const raw = props.getProperty(LB_PROP_KEY) || '[]';
     let list = [];
@@ -56,14 +54,16 @@ function submitScore(name, time) {
 
     const safeName = String(name || 'anon').slice(0, 16);
     const t = Number(time);
+    const teamNum = Number(team) || 0;
     if (!isNaN(t) && t > 0) {
-      list.push({ name: safeName, time: t, date: Date.now() });
+      list.push({ name: safeName, team: teamNum, time: t, date: Date.now() });
     }
+    // 시간 순 정렬 후 최신 LB_MAX개만 유지 (오래된 기록 자동 정리)
     list.sort(function(a, b) { return a.time - b.time; });
     if (list.length > LB_MAX) list = list.slice(0, LB_MAX);
 
     props.setProperty(LB_PROP_KEY, JSON.stringify(list));
-    return list.slice(0, 50);
+    return list;
   } finally {
     try { lock.releaseLock(); } catch (e) {}
   }
