@@ -311,13 +311,21 @@
 
     async function submitScoreRemote(name, team, time) {
       if (isGAS()) {
-        try { const data = await callGAS('submitScore', name, team, time); if (Array.isArray(data)) return data; }
-        catch (e) { console.warn('submitScore 실패:', e); }
+        try {
+          const data = await callGAS('submitScore', name, team, time);
+          if (Array.isArray(data)) return { data, saved: 'remote', error: null };
+        } catch (e) {
+          const msg = (e && e.message) || String(e);
+          const entry = { name, team: Number(team) || 0, time, date: Date.now() };
+          const updated = [...loadLocalLB(), entry];
+          saveLocalLB(updated.slice(-200));
+          return { data: updated, saved: 'local-fallback', error: msg };
+        }
       }
       const entry = { name, team: Number(team) || 0, time, date: Date.now() };
       const updated = [...loadLocalLB(), entry];
       saveLocalLB(updated.slice(-200));
-      return updated;
+      return { data: updated, saved: 'local', error: null };
     }
 
     async function clearLeaderboardRemote(password) {
@@ -351,6 +359,7 @@
       const [lbTab, setLbTab] = useState('team'); // 'individual' | 'team'
       const [confettiBits, setConfettiBits] = useState([]);
       const [usingRemote, setUsingRemote] = useState(false);
+      const [submitStatus, setSubmitStatus] = useState(null); // { saved, error }
 
       const startRef = useRef(0);
       const penaltyRef = useRef(0);
@@ -431,8 +440,10 @@
                 const t = Date.now() - startRef.current + penaltyRef.current;
                 setFinalTime(t);
                 setLbBusy(true);
-                const updated = await submitScoreRemote(name.trim(), team, t);
-                setLeaderboard(updated);
+                const result = await submitScoreRemote(name.trim(), team, t);
+                setLeaderboard(result.data);
+                setSubmitStatus({ saved: result.saved, error: result.error });
+                setLbUpdatedAt(Date.now());
                 setLbBusy(false);
                 setScreen('result');
               }, 1500);
@@ -761,6 +772,23 @@
                 <div className="text-xs md:text-sm text-slate-400 mb-0.5">최종 기록</div>
                 <div className="text-3xl md:text-5xl font-black font-mono tabular-nums text-amber-300">{formatTime(finalTime)}</div>
               </div>
+
+              {submitStatus && (
+                <div className={`rounded-xl px-3 py-2 mb-3 text-xs md:text-sm font-bold ${
+                  submitStatus.saved === 'remote' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                  submitStatus.saved === 'local-fallback' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                  'bg-slate-50 text-slate-600 border border-slate-200'
+                }`}>
+                  {submitStatus.saved === 'remote' && '✅ 서버에 점수 저장 완료 — 모든 친구에게 공유됨'}
+                  {submitStatus.saved === 'local-fallback' && (
+                    <>
+                      ⚠️ 서버 저장 실패 — 이 기기에만 저장됨
+                      <div className="font-mono text-[10px] mt-1 break-all opacity-80">에러: {submitStatus.error}</div>
+                    </>
+                  )}
+                  {submitStatus.saved === 'local' && 'ℹ️ 로컬 모드(GAS 미연결) — 이 기기에만 저장됨'}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2 md:gap-3 mb-4">
                 <div className="bg-white border-2 border-slate-200 rounded-xl p-2.5 md:p-3">
