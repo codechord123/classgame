@@ -241,15 +241,15 @@
       ];
       return (
         <button onClick={() => onPick(choice)} disabled={disabled}
-          className={`relative bg-gradient-to-br ${colors[idx]} text-white rounded-2xl md:rounded-3xl p-4 md:p-6 border-4 shadow-xl active:scale-95 hover:scale-[1.03] transition-transform disabled:opacity-50 disabled:active:scale-100 flex-1 min-h-[120px] md:min-h-[160px] flex flex-col items-center justify-center gap-2 md:gap-3`}>
-          <span className="absolute top-2 left-3 text-base md:text-xl font-black opacity-80">{labels[idx]}</span>
-          <div className="flex items-center justify-center gap-1 md:gap-2 text-2xl md:text-4xl">
+          className={`relative bg-gradient-to-br ${colors[idx]} text-white rounded-xl sm:rounded-2xl md:rounded-3xl p-2 sm:p-4 md:p-6 border-4 shadow-xl active:scale-95 hover:scale-[1.03] transition-transform disabled:opacity-50 disabled:active:scale-100 flex-1 min-h-[80px] sm:min-h-[110px] md:min-h-[150px] flex flex-col items-center justify-center gap-1 sm:gap-2 md:gap-3`}>
+          <span className="absolute top-1.5 left-2 text-xs sm:text-base md:text-xl font-black opacity-80">{labels[idx]}</span>
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 text-lg sm:text-2xl md:text-4xl">
             {choice.type === 'reduce' ? (
               <Frac n={choice.n} d={choice.d} color="text-white" />
             ) : (
               <>
                 <Frac n={choice.n1} d={choice.d} color="text-white" />
-                <span className="text-2xl md:text-4xl font-black">,</span>
+                <span className="text-sm sm:text-2xl md:text-4xl font-black">,</span>
                 <Frac n={choice.n2} d={choice.d} color="text-white" />
               </>
             )}
@@ -261,7 +261,7 @@
     const Character = ({ scale = 1, popping = false, className = "" }) => (
       <div className={`${popping ? 'pop' : ''} ${className}`}
         style={{ transform: popping ? undefined : `scale(${scale})`, transformOrigin: 'center center', transition: popping ? undefined : 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-        <svg viewBox="0 0 220 220" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 220 220" className="w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] md:w-[160px] md:h-[160px]" xmlns="http://www.w3.org/2000/svg">
           <path d="M 40,90 Q 38,18 110,18 Q 188,18 188,100 Q 195,200 110,200 Q 28,200 28,110 Q 28,98 40,90 Z" fill="#fef3c7" stroke="#1f2937" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
           <path d="M 62,80 Q 110,72 158,80" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" />
           <circle cx="82" cy="108" r="4" fill="none" stroke="#1f2937" strokeWidth="2.5" />
@@ -632,40 +632,42 @@
       // ============== 화면 렌더 ==============
       if (screen === 'title') {
         return (
-          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex items-center justify-center p-4 font-sans overflow-y-auto">
-            <div className="bg-white/95 rounded-3xl shadow-2xl p-5 md:p-7 max-w-lg w-full text-center animate-fade-in my-3">
-              <div className="flex justify-center mb-2">
-                <Character scale={0.8} />
-              </div>
-              <h1 className="text-2xl md:text-4xl font-black text-slate-800 mb-0.5 tracking-tight">분수 폭발!</h1>
-              <p className="text-sm md:text-base text-slate-500 font-bold mb-4">약분·통분 스피드 게임 ⚡</p>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left text-xs md:text-sm text-amber-900 mb-4 leading-relaxed break-keep">
-                <div className="font-bold mb-1">📜 규칙</div>
-                <ul className="list-disc list-inside space-y-0.5 marker:text-amber-500">
-                  <li>총 <strong>30문제</strong> (약분/기약/동치/통분 무작위)</li>
-                  <li>3장 카드 중 <strong>정답</strong> 선택 시 캐릭터 성장</li>
-                  <li>오답: <strong className="text-rose-600">+10초</strong> 페널티</li>
-                  <li>완주 시 <strong>펑!</strong> 💥 + 기록 저장</li>
-                  <li><strong>모둠전</strong>: 5명 합산 시간이 적은 모둠 승</li>
-                </ul>
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex flex-col font-sans overflow-hidden">
+            {/* 상단: 이름/모둠/시작 (스크롤 없이 항상 보임) */}
+            <div className="flex-shrink-0 flex flex-col items-center px-4 pt-4 pb-2 gap-2">
+              <div className="flex items-center gap-3">
+                <Character scale={0.7} />
+                <div className="text-white text-left">
+                  <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight">분수 폭발!</h1>
+                  <p className="text-xs sm:text-sm text-white/80 font-bold">약분·통분 스피드 게임 ⚡</p>
+                </div>
               </div>
 
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="이름" maxLength={12}
-                className="w-full px-4 py-2.5 text-base md:text-lg text-center font-bold rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3" />
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-left text-[11px] sm:text-xs md:text-sm text-amber-900 mb-3 leading-relaxed break-keep">
+                  <span className="font-bold">📜 규칙: </span>
+                  30문제 · 3장 카드 중 정답 선택 · 오답 <strong className="text-rose-600">+10초</strong> · 완주 시 💥 · <strong>모둠전</strong> 합산시간 경쟁
+                </div>
 
-              <div className="text-left mb-3">
-                <div className="text-xs md:text-sm font-bold text-slate-600 mb-1.5">우리 모둠을 선택하세요</div>
-                <TeamPicker value={team} onChange={setTeam} />
+                <input type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="이름을 입력하세요" maxLength={12}
+                  className="w-full px-4 py-3 text-base sm:text-lg text-center font-bold rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-2" />
+
+                <div className="mb-3">
+                  <div className="text-xs sm:text-sm font-bold text-slate-600 mb-1.5">우리 모둠을 선택하세요</div>
+                  <TeamPicker value={team} onChange={setTeam} />
+                </div>
+
+                <button onClick={startGame} disabled={!name.trim() || !team}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white text-base sm:text-xl font-black py-3 rounded-2xl shadow-lg active:scale-95 transition disabled:opacity-50 disabled:active:scale-100">
+                  🚀 시작하기
+                </button>
               </div>
+            </div>
 
-              <button onClick={startGame} disabled={!name.trim() || !team}
-                className="w-full bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white text-lg md:text-xl font-black py-3 rounded-2xl shadow-lg active:scale-95 transition disabled:opacity-50 disabled:active:scale-100">
-                🚀 시작하기
-              </button>
-
-              <div className="mt-5">
+            {/* 하단: 명예의 전당 (스크롤 가능) */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto">
                 <LeaderboardSection highlight={null} />
               </div>
             </div>
@@ -704,8 +706,12 @@
               <div className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300" style={{ width: `${progressPct}%` }}></div>
             </div>
 
-            <div className={`flex-1 flex flex-col lg:flex-row items-center justify-center p-3 md:p-8 gap-3 md:gap-8 overflow-y-auto ${feedback === 'wrong' ? 'shake' : ''}`}>
-              <div className="flex-shrink-0 relative flex items-center justify-center w-full lg:w-1/2 h-[140px] sm:h-[180px] md:h-[260px] lg:h-full">
+            {/* 모바일: 세로 배치 (캐릭터 상단 작게, 문제+카드 하단) / 데스크톱: 좌우 분할 */}
+            <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${feedback === 'wrong' ? 'shake' : ''}`}>
+
+              {/* 캐릭터 영역 */}
+              <div className="relative flex items-center justify-center flex-shrink-0
+                              h-[90px] sm:h-[140px] md:h-auto md:w-[38%] lg:w-[42%]">
                 <div className={feedback === 'correct' && screen === 'playing' ? 'grow-pulse' : ''}>
                   <Character scale={scale} popping={screen === 'popping'} />
                 </div>
@@ -719,12 +725,13 @@
                 )}
               </div>
 
-              <div className="w-full lg:w-1/2 flex flex-col gap-3 md:gap-5">
+              {/* 문제 + 카드 영역 */}
+              <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 md:gap-5 overflow-hidden">
                 {problem && screen === 'playing' && (
                   <>
-                    <div className="bg-white text-slate-800 rounded-2xl md:rounded-3xl px-4 py-3 md:px-8 md:py-6 text-center shadow-2xl">
-                      <div className="text-xs md:text-sm font-bold text-slate-400 mb-1 md:mb-2">{problem.tag}</div>
-                      <div className="text-xl md:text-3xl font-black flex items-center justify-center flex-wrap gap-1 md:gap-2">
+                    <div className="bg-white text-slate-800 rounded-xl md:rounded-3xl px-3 py-2 sm:px-5 sm:py-3 md:px-8 md:py-5 text-center shadow-2xl flex-shrink-0">
+                      <div className="text-[10px] sm:text-xs md:text-sm font-bold text-slate-400 mb-0.5 md:mb-2">{problem.tag}</div>
+                      <div className="text-base sm:text-xl md:text-3xl font-black flex items-center justify-center flex-wrap gap-0.5 sm:gap-1 md:gap-2">
                         {problem.type === 'reduce' ? (
                           <>
                             <Frac n={problem.original.n} d={problem.original.d} />
@@ -741,23 +748,24 @@
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
+                    {/* 카드: 항상 가로 3열 */}
+                    <div className="flex flex-row gap-1.5 sm:gap-2 md:gap-4 flex-1">
                       {problem.choices.map((c, i) => (
                         <ChoiceCard key={i} choice={c} idx={i} onPick={handlePick} disabled={lockRef.current} />
                       ))}
                     </div>
 
                     {feedback === 'wrong' && (
-                      <div className="text-center text-rose-300 font-black text-lg md:text-2xl animate-fade-in">❌ 오답! +10초 페널티</div>
+                      <div className="text-center text-rose-300 font-black text-sm sm:text-lg md:text-2xl animate-fade-in flex-shrink-0">❌ 오답! +10초 페널티</div>
                     )}
                     {feedback === 'correct' && (
-                      <div className="text-center text-emerald-300 font-black text-lg md:text-2xl animate-fade-in">⭕ 정답!</div>
+                      <div className="text-center text-emerald-300 font-black text-sm sm:text-lg md:text-2xl animate-fade-in flex-shrink-0">⭕ 정답!</div>
                     )}
                   </>
                 )}
 
                 {screen === 'popping' && (
-                  <div className="text-center text-yellow-300 font-black text-3xl md:text-6xl animate-fade-in">💥 펑!</div>
+                  <div className="flex-1 flex items-center justify-center text-yellow-300 font-black text-3xl md:text-6xl animate-fade-in">💥 펑!</div>
                 )}
               </div>
             </div>
@@ -772,61 +780,68 @@
         const myTeamStat = teamStats.find(t => t.team === team);
         const m = teamMeta(team);
         return (
-          <div className="w-full h-[100dvh] bg-gradient-to-br from-pink-600 via-purple-700 to-indigo-700 flex items-center justify-center p-4 font-sans overflow-y-auto">
-            <div className="bg-white/95 rounded-3xl shadow-2xl p-5 md:p-7 max-w-xl w-full text-center animate-fade-in my-3">
-              <div className="text-5xl md:text-7xl mb-1">🎉</div>
-              <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-0.5">캐릭터 폭발 성공!</h2>
-              <p className="text-slate-500 font-bold mb-4 text-sm md:text-base">
-                {m && <span className={`inline-block px-1.5 py-0.5 rounded ${m.bg} ${m.text} text-xs mr-1 font-black`}>{m.emoji}{m.name}</span>}
-                {name} 님 수고하셨습니다
-              </p>
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-pink-600 via-purple-700 to-indigo-700 flex flex-col font-sans overflow-hidden">
+            {/* 상단 고정: 기록 + 순위 + 버튼 */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-2">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-xl mx-auto text-center animate-fade-in">
+                <div className="text-2xl sm:text-5xl mb-0.5">🎉</div>
+                <h2 className="text-base sm:text-2xl md:text-3xl font-black text-slate-800 mb-0.5">캐릭터 폭발 성공!</h2>
+                <p className="text-slate-500 font-bold mb-2 text-xs sm:text-sm md:text-base">
+                  {m && <span className={`inline-block px-1.5 py-0.5 rounded ${m.bg} ${m.text} text-xs mr-1 font-black`}>{m.emoji}{m.name}</span>}
+                  {name} 님 수고하셨습니다
+                </p>
 
-              <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-6 mb-3 shadow-inner">
-                <div className="text-xs md:text-sm text-slate-400 mb-0.5">최종 기록</div>
-                <div className="text-3xl md:text-5xl font-black font-mono tabular-nums text-amber-300">{formatTime(finalTime)}</div>
-              </div>
-
-              {submitStatus && (
-                <div className={`rounded-xl px-3 py-2 mb-3 text-xs md:text-sm font-bold ${
-                  submitStatus.saved === 'remote' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                  submitStatus.saved === 'local-fallback' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                  'bg-slate-50 text-slate-600 border border-slate-200'
-                }`}>
-                  {submitStatus.saved === 'remote' && '✅ 서버에 점수 저장 완료 — 모든 친구에게 공유됨'}
-                  {submitStatus.saved === 'local-fallback' && (
-                    <>
-                      ⚠️ 서버 저장 실패 — 이 기기에만 저장됨
-                      <div className="font-mono text-[10px] mt-1 break-all opacity-80">에러: {submitStatus.error}</div>
-                    </>
-                  )}
-                  {submitStatus.saved === 'local' && 'ℹ️ 로컬 모드(GAS 미연결) — 이 기기에만 저장됨'}
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 mb-2 shadow-inner">
+                  <div className="text-[10px] sm:text-xs md:text-sm text-slate-400 mb-0.5">최종 기록</div>
+                  <div className="text-2xl sm:text-4xl md:text-5xl font-black font-mono tabular-nums text-amber-300">{formatTime(finalTime)}</div>
                 </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-2 md:gap-3 mb-4">
-                <div className="bg-white border-2 border-slate-200 rounded-xl p-2.5 md:p-3">
-                  <div className="text-[10px] md:text-xs text-slate-400 font-bold">개인전 순위</div>
-                  <div className="text-xl md:text-2xl font-black text-indigo-600">{myIndvRank > 0 ? `${myIndvRank}위` : '-'}</div>
-                </div>
-                <div className={`border-2 rounded-xl p-2.5 md:p-3 ${m ? m.bg : 'bg-white'} ${m ? m.border : 'border-slate-200'}`}>
-                  <div className="text-[10px] md:text-xs text-slate-400 font-bold">{m ? m.name : '모둠'} 순위</div>
-                  <div className={`text-xl md:text-2xl font-black ${m ? m.text : 'text-slate-600'}`}>
-                    {myTeamStat && myTeamStat.count > 0 ? `${myTeamRank}위 (${myTeamStat.count}/${TEAM_SIZE})` : '-'}
+                {submitStatus && (
+                  <div className={`rounded-xl px-3 py-1.5 mb-2 text-[11px] sm:text-xs md:text-sm font-bold ${
+                    submitStatus.saved === 'remote' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    submitStatus.saved === 'local-fallback' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                    'bg-slate-50 text-slate-600 border border-slate-200'
+                  }`}>
+                    {submitStatus.saved === 'remote' && '✅ 서버 저장 완료 — 모든 친구에게 공유됨'}
+                    {submitStatus.saved === 'local-fallback' && (
+                      <>⚠️ 서버 저장 실패 — 이 기기에만 저장됨
+                        <div className="font-mono text-[10px] mt-0.5 break-all opacity-80">에러: {submitStatus.error}</div>
+                      </>
+                    )}
+                    {submitStatus.saved === 'local' && 'ℹ️ 로컬 모드 — 이 기기에만 저장됨'}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-white border-2 border-slate-200 rounded-xl p-2">
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold">개인전 순위</div>
+                    <div className="text-xl sm:text-2xl font-black text-indigo-600">{myIndvRank > 0 ? `${myIndvRank}위` : '-'}</div>
+                  </div>
+                  <div className={`border-2 rounded-xl p-2 ${m ? m.bg : 'bg-white'} ${m ? m.border : 'border-slate-200'}`}>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold">{m ? m.name : '모둠'} 순위</div>
+                    <div className={`text-xl sm:text-2xl font-black ${m ? m.text : 'text-slate-600'}`}>
+                      {myTeamStat && myTeamStat.count > 0 ? `${myTeamRank}위 (${myTeamStat.count}/${TEAM_SIZE})` : '-'}
+                    </div>
                   </div>
                 </div>
+
+                <div className="flex flex-row gap-2">
+                  <button onClick={() => resetGame(true)}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 sm:py-3 rounded-xl transition text-sm sm:text-base">
+                    👥 다음 사람
+                  </button>
+                  <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
+                    className="flex-1 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-black py-2.5 sm:py-3 rounded-xl shadow-lg transition active:scale-95 text-sm sm:text-base">
+                    🔁 다시 도전
+                  </button>
+                </div>
               </div>
+            </div>
 
-              <LeaderboardSection highlight={myHighlight} />
-
-              <div className="flex flex-col sm:flex-row gap-2 mt-5">
-                <button onClick={() => resetGame(true)}
-                  className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition">
-                  👥 다음 사람
-                </button>
-                <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
-                  className="flex-1 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-black py-3 rounded-xl shadow-lg transition active:scale-95">
-                  🔁 다시 도전 (같은 학생)
-                </button>
+            {/* 하단: 명예의 전당 (스크롤 가능) */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-xl mx-auto">
+                <LeaderboardSection highlight={myHighlight} />
               </div>
             </div>
           </div>
