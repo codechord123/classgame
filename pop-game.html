@@ -686,7 +686,9 @@
       }
 
       if (screen === 'playing' || screen === 'popping') {
-        const scale = 0.5 + (solved / TOTAL_PROBLEMS) * 3.5;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        const maxScale = isMobile ? 1.4 : 4.0;
+        const scale = 0.5 + (solved / TOTAL_PROBLEMS) * (maxScale - 0.5);
         const progressPct = (solved / TOTAL_PROBLEMS) * 100;
         const m = teamMeta(team);
         return (
@@ -710,8 +712,8 @@
             <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${feedback === 'wrong' ? 'shake' : ''}`}>
 
               {/* 캐릭터 영역 */}
-              <div className="relative flex items-center justify-center flex-shrink-0
-                              h-[90px] sm:h-[140px] md:h-auto md:w-[38%] lg:w-[42%]">
+              <div className="relative flex items-center justify-center flex-shrink-0 overflow-hidden
+                              h-[110px] sm:h-[150px] md:overflow-visible md:h-auto md:w-[38%] lg:w-[42%]">
                 <div className={feedback === 'correct' && screen === 'playing' ? 'grow-pulse' : ''}>
                   <Character scale={scale} popping={screen === 'popping'} />
                 </div>
