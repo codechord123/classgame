@@ -20,6 +20,7 @@
 const LB_PROP_KEY = 'LB_JSON_V1';
 const LB_ADDSUB_PROP_KEY = 'LB_ADDSUB_JSON_V1';
 const LB_RUNNER_PROP_KEY = 'LB_RUNNER_JSON_V1';
+const LB_ESCAPE_PROP_KEY = 'LB_ESCAPE_JSON_V1';
 const LB_MAX = 200;
 const TEACHER_PASSWORD = 'teacher1234'; // 선생님이 직접 원하는 비밀번호로 변경하세요
 
@@ -34,6 +35,12 @@ function doGet(e) {
   if (game === 'runner') {
     return HtmlService.createHtmlOutputFromFile('runner-game')
       .setTitle('분수 러너! 통분·약분 달리기')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  if (game === 'escape') {
+    return HtmlService.createHtmlOutputFromFile('escape-game')
+      .setTitle('분수 방탈출! 7개 방 통분·약분')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -188,5 +195,52 @@ function clearLeaderboardRunner(password) {
     throw new Error('비밀번호가 틀렸습니다.');
   }
   PropertiesService.getScriptProperties().deleteProperty(LB_RUNNER_PROP_KEY);
+  return [];
+}
+
+// ===== 분수 방탈출 게임용 리더보드 (별도 저장소) =====
+
+function getLeaderboardEscape() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(LB_ESCAPE_PROP_KEY) || '[]';
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    return list;
+  } catch (err) {
+    return [];
+  }
+}
+
+function submitScoreEscape(name, team, time) {
+  const props = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(5000); } catch (e) {}
+  try {
+    const raw = props.getProperty(LB_ESCAPE_PROP_KEY) || '[]';
+    let list = [];
+    try { list = JSON.parse(raw); } catch (e) { list = []; }
+    if (!Array.isArray(list)) list = [];
+
+    const safeName = String(name || 'anon').slice(0, 16);
+    const t = Number(time);
+    const teamNum = Number(team);
+    if (!isNaN(t) && t > 0) {
+      list.push({ name: safeName, team: isNaN(teamNum) ? 0 : teamNum, time: t, date: Date.now() });
+    }
+    list.sort(function(a, b) { return a.time - b.time; });
+    if (list.length > LB_MAX) list = list.slice(0, LB_MAX);
+
+    props.setProperty(LB_ESCAPE_PROP_KEY, JSON.stringify(list));
+    return list;
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+function clearLeaderboardEscape(password) {
+  if (String(password) !== TEACHER_PASSWORD) {
+    throw new Error('비밀번호가 틀렸습니다.');
+  }
+  PropertiesService.getScriptProperties().deleteProperty(LB_ESCAPE_PROP_KEY);
   return [];
 }
