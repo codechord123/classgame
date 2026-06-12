@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>분수 폭발! 스피드 게임</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+    @keyframes pulse-grow { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    .grow-pulse { animation: pulse-grow 0.45s ease-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); } 40% { transform: translateX(10px); }
+      60% { transform: translateX(-8px); } 80% { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.4s ease-in-out; }
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      40% { transform: scale(1.6) rotate(-8deg); opacity: 1; }
+      70% { transform: scale(2.2) rotate(6deg); opacity: 0.9; }
+      100% { transform: scale(3.5) rotate(0deg); opacity: 0; }
+    }
+    .pop { animation: pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    @keyframes confetti {
+      0% { transform: translate(0,0) rotate(0); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) rotate(var(--r)); opacity: 0; }
+    }
+    .confetti { animation: confetti 1.2s ease-out forwards; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 overflow-hidden">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ============== 수학 유틸 ==============
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const lcmOf = (a, b) => (a * b) / gcd(a, b);
+    const rint = (n) => Math.floor(Math.random() * n);
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+      return a;
+    };
+    const sameChoice = (a, b) => {
+      if (!a || !b || a.type !== b.type) return false;
+      if (a.type === 'reduce') return a.n === b.n && a.d === b.d;
+      return a.n1 === b.n1 && a.n2 === b.n2 && a.d === b.d;
+    };
+    const isEquivalent = (a, b) => a.n * b.d === a.d * b.n;
+
+    // ============== 문제 생성 ==============
+    function makeReduceProblem() {
+      let d, n, g;
+      do { d = 4 + rint(14); n = 1 + rint(d - 1); g = gcd(n, d); } while (g === 1);
+      const cn = n / g, cd = d / g;
+      const correct = { type: 'reduce', n: cn, d: cd };
+
+      const choices = [correct];
+      let tries = 0;
+      while (choices.length < 3 && tries < 60) {
+        tries++;
+        const r = Math.random();
+        let wn, wd;
+        if (r < 0.45) { const k = 2 + rint(2); wn = cn * k; wd = cd * k; }
+        else if (r < 0.75) { wn = Math.max(1, cn + (Math.random() > 0.5 ? 1 : -1)); wd = cd; }
+        else { wn = Math.max(1, cn + (Math.random() > 0.5 ? 1 : -1)); wd = Math.max(2, cd + (Math.random() > 0.5 ? 1 : -1)); }
+        if (wn >= wd) wd = wn + 1;
+        const cand = { type: 'reduce', n: wn, d: wd };
+        if (!sameChoice(cand, correct) && !choices.some(c => sameChoice(c, cand))) choices.push(cand);
+      }
+      while (choices.length < 3) choices.push({ type: 'reduce', n: cn + choices.length, d: cd + choices.length + 2 });
+
+      const questionText = Math.random() < 0.5 ? '을(를) 약분하면?' : '을(를) 기약분수로 나타내면?';
+      const tag = questionText.includes('기약') ? '✨ 기약분수 만들기' : '✂️ 약분 문제';
+      return { type: 'reduce', subtype: 'reduce', tag, original: { n, d }, questionText, correctAnswer: correct, choices: shuffle(choices) };
+    }
+
+    function makeEquivalentProblem() {
+      let d, n;
+      do { d = 2 + rint(7); n = 1 + rint(d - 1); } while (gcd(n, d) !== 1);
+      const k = 2 + rint(4);
+      const correct = { type: 'reduce', n: n * k, d: d * k };
+
+      const choices = [correct];
+      let tries = 0;
+      while (choices.length < 3 && tries < 80) {
+        tries++;
+        const r = Math.random();
+        let cand;
+        if (r < 0.45) {
+          const a = 2 + rint(5), b = 2 + rint(5);
+          if (a !== b) cand = { type: 'reduce', n: n * a, d: d * b };
+        } else if (r < 0.75) {
+          const off = Math.random() > 0.5 ? 1 : -1;
+          cand = { type: 'reduce', n: Math.max(1, correct.n + off), d: correct.d };
+        } else {
+          cand = { type: 'reduce', n: correct.n + 1, d: correct.d + 1 };
+        }
+        if (cand && !isEquivalent(cand, { n, d }) && !choices.some(c => sameChoice(c, cand))) choices.push(cand);
+      }
+      while (choices.length < 3) choices.push({ type: 'reduce', n: correct.n + choices.length + 2, d: correct.d + choices.length + 1 });
+
+      return { type: 'reduce', subtype: 'equivalent', tag: '🟰 동치분수 찾기', original: { n, d }, questionText: '와(과) 크기가 같은 분수는?', correctAnswer: correct, choices: shuffle(choices) };
+    }
+
+    function makeCommonLcmProblem() {
+      let d1, d2;
+      do { d1 = 2 + rint(7); d2 = 2 + rint(7); } while (d1 === d2 || lcmOf(d1, d2) === Math.max(d1, d2));
+      const n1 = 1 + rint(d1 - 1), n2 = 1 + rint(d2 - 1);
+      const lcm = lcmOf(d1, d2);
+      const correct = { type: 'common', n1: n1 * (lcm / d1), n2: n2 * (lcm / d2), d: lcm };
+
+      const choices = [correct];
+      let tries = 0;
+      while (choices.length < 3 && tries < 60) {
+        tries++;
+        const r = Math.random();
+        let cand;
+        if (r < 0.5) {
+          const prod = d1 * d2;
+          if (prod !== lcm) cand = { type: 'common', n1: n1 * d2, n2: n2 * d1, d: prod };
+        } else if (r < 0.8) {
+          cand = { type: 'common', n1: Math.max(1, correct.n1 + (Math.random() > 0.5 ? 1 : -1)), n2: correct.n2, d: lcm };
+        } else {
+          cand = { type: 'common', n1: correct.n1, n2: correct.n2 + 1, d: lcm };
+        }
+        if (cand && !choices.some(c => sameChoice(c, cand))) choices.push(cand);
+      }
+      while (choices.length < 3) choices.push({ type: 'common', n1: correct.n1 + choices.length, n2: correct.n2 + choices.length, d: lcm + choices.length });
+
+      const questionText = Math.random() < 0.5 ? '을(를) 통분하면?' : '을(를) 최소공배수로 통분하면?';
+      const tag = questionText.includes('최소공배수') ? '🤝 통분 (최소공배수)' : '🤝 통분 문제';
+      return { type: 'common', subtype: 'common-lcm', tag, original: { n1, d1, n2, d2 }, questionText, correctAnswer: correct, choices: shuffle(choices) };
+    }
+
+    function makeCommonProductProblem() {
+      let d1, d2;
+      do { d1 = 2 + rint(7); d2 = 2 + rint(7); }
+      while (d1 === d2 || lcmOf(d1, d2) === d1 * d2 || lcmOf(d1, d2) === Math.max(d1, d2));
+      const n1 = 1 + rint(d1 - 1), n2 = 1 + rint(d2 - 1);
+      const prod = d1 * d2;
+      const correct = { type: 'common', n1: n1 * d2, n2: n2 * d1, d: prod };
+
+      const choices = [correct];
+      let tries = 0;
+      while (choices.length < 3 && tries < 60) {
+        tries++;
+        const r = Math.random();
+        let cand;
+        if (r < 0.55) { const lcm = lcmOf(d1, d2); cand = { type: 'common', n1: n1 * (lcm / d1), n2: n2 * (lcm / d2), d: lcm }; }
+        else if (r < 0.85) { cand = { type: 'common', n1: n1 * d1, n2: n2 * d2, d: prod }; }
+        else { cand = { type: 'common', n1: Math.max(1, correct.n1 + (Math.random() > 0.5 ? 1 : -1)), n2: correct.n2, d: prod }; }
+        if (cand && !choices.some(c => sameChoice(c, cand))) choices.push(cand);
+      }
+      while (choices.length < 3) choices.push({ type: 'common', n1: correct.n1 + choices.length, n2: correct.n2 + choices.length, d: prod + choices.length });
+
+      return { type: 'common', subtype: 'common-product', tag: '✖️ 통분 (두 분모의 곱)', original: { n1, d1, n2, d2 }, questionText: '을(를) 두 분모의 곱으로 통분하면?', correctAnswer: correct, choices: shuffle(choices) };
+    }
+
+    const generateProblem = () => {
+      const r = Math.random();
+      if (r < 0.28) return makeReduceProblem();
+      if (r < 0.48) return makeEquivalentProblem();
+      if (r < 0.78) return makeCommonLcmProblem();
+      return makeCommonProductProblem();
+    };
+
+    // ============== 모둠 ==============
+    const TEAMS = [
+      { id: 1, name: '1모둠', emoji: '🔴', grad: 'from-red-500 to-rose-600',     bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-400'     },
+      { id: 2, name: '2모둠', emoji: '🔵', grad: 'from-blue-500 to-indigo-600',  bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-400'    },
+      { id: 3, name: '3모둠', emoji: '🟢', grad: 'from-emerald-500 to-green-600',bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-400' },
+      { id: 4, name: '4모둠', emoji: '🟠', grad: 'from-orange-500 to-amber-600', bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-400'  },
+      { id: 5, name: '5모둠', emoji: '🟣', grad: 'from-purple-500 to-fuchsia-600',bg: 'bg-purple-50', text: 'text-purple-700',  border: 'border-purple-400'  },
+    ];
+    const TEAM_SIZE = 5;
+    const teamMeta = (id) => TEAMS.find(t => t.id === Number(id)) || null;
+
+    // 같은 학생의 여러 도전 중 최단 기록만 남김
+    function bestPerPlayer(entries) {
+      const best = {};
+      entries.forEach(e => {
+        if (!e || !e.name || typeof e.time !== 'number') return;
+        const key = `${e.name}#${e.team || 0}`;
+        if (!best[key] || e.time < best[key].time) best[key] = e;
+      });
+      return Object.values(best).sort((a, b) => a.time - b.time);
+    }
+
+    function computeTeamStats(entries) {
+      const playersBest = bestPerPlayer(entries);
+      const teams = {};
+      TEAMS.forEach(t => { teams[t.id] = { team: t.id, players: [], sum: 0, count: 0, avg: 0 }; });
+      playersBest.forEach(e => {
+        const t = Number(e.team);
+        if (!teams[t]) return;
+        teams[t].players.push(e);
+      });
+      const arr = Object.values(teams).map(t => {
+        const players = t.players.slice().sort((a,b) => a.time - b.time);
+        const sum = players.reduce((acc, p) => acc + p.time, 0);
+        const count = players.length;
+        const avg = count > 0 ? sum / count : 0;
+        return { team: t.team, players, sum, count, avg };
+      });
+      arr.sort((a, b) => {
+        if (a.count !== b.count) return b.count - a.count;
+        if (a.count === 0) return 0;
+        return a.sum - b.sum;
+      });
+      return arr;
+    }
+
+    // ============== 분수 표시 ==============
+    const Frac = ({ n, d, color = "text-slate-800" }) => (
+      <span className={`inline-flex flex-col items-center mx-1 ${color} font-black leading-none`}>
+        <span className="text-current">{n}</span>
+        <span className="block w-full border-b-[3px] border-current my-0.5"></span>
+        <span className="text-current">{d}</span>
+      </span>
+    );
+
+    const ChoiceCard = ({ choice, onPick, disabled, idx }) => {
+      const labels = ['A', 'B', 'C'];
+      const colors = [
+        'from-sky-400 to-sky-600 border-sky-300',
+        'from-rose-400 to-rose-600 border-rose-300',
+        'from-emerald-400 to-emerald-600 border-emerald-300',
+      ];
+      return (
+        <button onClick={() => onPick(choice)} disabled={disabled}
+          className={`relative bg-gradient-to-br ${colors[idx]} text-white rounded-xl sm:rounded-2xl md:rounded-3xl p-1.5 sm:p-4 md:p-6 border-4 shadow-xl active:scale-95 hover:scale-[1.03] transition-transform disabled:opacity-50 disabled:active:scale-100 flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 md:gap-3`}>
+          <span className="absolute top-1.5 left-2 text-xs sm:text-base md:text-xl font-black opacity-80">{labels[idx]}</span>
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 text-xl sm:text-2xl md:text-4xl">
+            {choice.type === 'reduce' ? (
+              <Frac n={choice.n} d={choice.d} color="text-white" />
+            ) : (
+              <>
+                <Frac n={choice.n1} d={choice.d} color="text-white" />
+                <span className="text-sm sm:text-2xl md:text-4xl font-black">,</span>
+                <Frac n={choice.n2} d={choice.d} color="text-white" />
+              </>
+            )}
+          </div>
+        </button>
+      );
+    };
+
+    const Character = ({ scale = 1, popping = false, className = "" }) => (
+      <div className={`${popping ? 'pop' : ''} ${className}`}
+        style={{ transform: popping ? undefined : `scale(${scale})`, transformOrigin: 'center center', transition: popping ? undefined : 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+        <svg viewBox="0 0 220 220" className="w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] md:w-[160px] md:h-[160px]" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 40,90 Q 38,18 110,18 Q 188,18 188,100 Q 195,200 110,200 Q 28,200 28,110 Q 28,98 40,90 Z" fill="#fef3c7" stroke="#1f2937" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+          <path d="M 62,80 Q 110,72 158,80" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <circle cx="82" cy="108" r="4" fill="none" stroke="#1f2937" strokeWidth="2.5" />
+          <circle cx="138" cy="108" r="4" fill="none" stroke="#1f2937" strokeWidth="2.5" />
+          <path d="M 95,92 L 100,148 L 110,138 L 120,148 L 125,92" stroke="#1f2937" strokeWidth="3" fill="none" strokeLinejoin="round" strokeLinecap="round" />
+          <path d="M 88,170 L 98,162 L 108,170 L 118,162 L 128,170" stroke="#1f2937" strokeWidth="2.5" fill="none" strokeLinejoin="round" strokeLinecap="round" />
+        </svg>
+      </div>
+    );
+
+    const formatTime = (ms) => {
+      const totalCs = Math.floor(ms / 10);
+      const m = Math.floor(totalCs / 6000);
+      const s = Math.floor((totalCs % 6000) / 100);
+      const cs = totalCs % 100;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+    };
+
+    // ============== 리더보드 (GAS 공유 ↔ localStorage 폴백) ==============
+    const LB_KEY = 'fraction-pop-game-leaderboard-v3';
+    const loadLocalLB = () => { try { return JSON.parse(localStorage.getItem(LB_KEY) || '[]'); } catch { return []; } };
+    const saveLocalLB = (entries) => { try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch {} };
+
+    const isGAS = () => typeof window !== 'undefined' && window.google && window.google.script && window.google.script.run;
+
+    // GAS google.script.run 은 동적 [fn] 접근 + Babel 의 spread 변환과 잘 안 맞아서
+    // 함수마다 직접 호출하는 헬퍼를 만든다.
+    function runnerWithTimeout(timeoutMs) {
+      return function (callFn) {
+        return new Promise(function (resolve, reject) {
+          if (!isGAS()) { reject(new Error('not GAS')); return; }
+          var done = false;
+          var timer = setTimeout(function () {
+            if (!done) { done = true; reject(new Error('서버 응답 시간 초과')); }
+          }, timeoutMs);
+          try {
+            var runner = google.script.run
+              .withSuccessHandler(function (v) { if (!done) { done = true; clearTimeout(timer); resolve(v); } })
+              .withFailureHandler(function (e) {
+                if (!done) { done = true; clearTimeout(timer); reject(e instanceof Error ? e : new Error((e && e.message) || String(e))); }
+              });
+            callFn(runner);
+          } catch (e) {
+            if (!done) { done = true; clearTimeout(timer); reject(e); }
+          }
+        });
+      };
+    }
+    var runGAS = runnerWithTimeout(10000);
+
+    async function fetchLeaderboard() {
+      if (isGAS()) {
+        try {
+          const data = await runGAS(function (r) { r.getLeaderboard(); });
+          if (Array.isArray(data)) return data;
+        } catch (e) { console.warn('getLeaderboard 실패, 로컬 사용:', e); }
+      }
+      return loadLocalLB();
+    }
+
+    async function submitScoreRemote(name, team, time) {
+      if (isGAS()) {
+        try {
+          const data = await runGAS(function (r) { r.submitScore(name, team, time); });
+          if (Array.isArray(data)) return { data, saved: 'remote', error: null };
+        } catch (e) {
+          const msg = (e && e.message) || String(e);
+          const entry = { name, team: Number(team) || 0, time, date: Date.now() };
+          const updated = [...loadLocalLB(), entry];
+          saveLocalLB(updated.slice(-200));
+          return { data: updated, saved: 'local-fallback', error: msg };
+        }
+      }
+      const entry = { name, team: Number(team) || 0, time, date: Date.now() };
+      const updated = [...loadLocalLB(), entry];
+      saveLocalLB(updated.slice(-200));
+      return { data: updated, saved: 'local', error: null };
+    }
+
+    async function clearLeaderboardRemote(password) {
+      if (isGAS()) {
+        await runGAS(function (r) { r.clearLeaderboard(password); });
+        return [];
+      }
+      saveLocalLB([]);
+      return [];
+    }
+
+    // ============== 메인 ==============
+    const TOTAL_PROBLEMS = 30;
+    const PENALTY_MS = 10000;
+
+    function App() {
+      const [screen, setScreen] = useState('title');
+      const [name, setName] = useState('');
+      const [team, setTeam] = useState(0); // 0 = 미선택
+      const [solved, setSolved] = useState(0);
+      const [problem, setProblem] = useState(null);
+      const [feedback, setFeedback] = useState(null);
+      const [elapsed, setElapsed] = useState(0);
+      const [countdown, setCountdown] = useState(3);
+      const [finalTime, setFinalTime] = useState(0);
+      const [leaderboard, setLeaderboard] = useState([]);
+      const [lbBusy, setLbBusy] = useState(false);
+      const [lbUpdatedAt, setLbUpdatedAt] = useState(0);
+      const [showPwModal, setShowPwModal] = useState(false);
+      const [pwInput, setPwInput] = useState('');
+      const [lbTab, setLbTab] = useState('team'); // 'individual' | 'team'
+      const [confettiBits, setConfettiBits] = useState([]);
+      const [usingRemote, setUsingRemote] = useState(false);
+      const [submitStatus, setSubmitStatus] = useState(null); // { saved, error }
+
+      const startRef = useRef(0);
+      const penaltyRef = useRef(0);
+      const rafRef = useRef(null);
+      const lockRef = useRef(false);
+
+      const playersBest = useMemo(() => bestPerPlayer(leaderboard), [leaderboard]);
+      const teamStats = useMemo(() => computeTeamStats(leaderboard), [leaderboard]);
+
+      const refreshLB = useCallback(async () => {
+        setLbBusy(true);
+        try {
+          const data = await fetchLeaderboard();
+          setLeaderboard(data);
+          setLbUpdatedAt(Date.now());
+        } catch (e) {
+          console.warn('refreshLB 오류:', e);
+        } finally {
+          setLbBusy(false);
+        }
+      }, []);
+
+      useEffect(() => { setUsingRemote(isGAS()); refreshLB(); }, [refreshLB]);
+
+      useEffect(() => {
+        if (screen !== 'playing') return;
+        const tick = () => {
+          setElapsed(Date.now() - startRef.current + penaltyRef.current);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafRef.current);
+      }, [screen]);
+
+      useEffect(() => {
+        if (screen !== 'countdown') return;
+        if (countdown <= 0) {
+          startRef.current = Date.now();
+          penaltyRef.current = 0;
+          setElapsed(0);
+          setSolved(0);
+          setProblem(generateProblem());
+          setScreen('playing');
+          return;
+        }
+        const t = setTimeout(() => setCountdown(c => c - 1), 700);
+        return () => clearTimeout(t);
+      }, [screen, countdown]);
+
+      const startGame = () => {
+        if (!name.trim() || !team) return;
+        setCountdown(3);
+        setScreen('countdown');
+      };
+
+      const handlePick = (choice) => {
+        if (lockRef.current || !problem) return;
+        const isCorrect = sameChoice(choice, problem.correctAnswer);
+        lockRef.current = true;
+
+        if (isCorrect) {
+          const next = solved + 1;
+          setFeedback('correct');
+          setSolved(next);
+          if (next >= TOTAL_PROBLEMS) {
+            setTimeout(() => {
+              setScreen('popping');
+              const bits = Array.from({ length: 28 }).map((_, i) => ({
+                id: i,
+                tx: (Math.random() - 0.5) * 800,
+                ty: (Math.random() - 0.5) * 600 - 100,
+                r: Math.random() * 720 - 360,
+                emoji: ['🎉','✨','⭐','💥','🎊','💫'][Math.floor(Math.random()*6)]
+              }));
+              setConfettiBits(bits);
+
+              setTimeout(async () => {
+                const t = Date.now() - startRef.current + penaltyRef.current;
+                setFinalTime(t);
+                setLbBusy(true);
+                const result = await submitScoreRemote(name.trim(), team, t);
+                setLeaderboard(result.data);
+                setSubmitStatus({ saved: result.saved, error: result.error });
+                setLbUpdatedAt(Date.now());
+                setLbBusy(false);
+                setScreen('result');
+              }, 1500);
+            }, 250);
+          } else {
+            setTimeout(() => {
+              setProblem(generateProblem());
+              setFeedback(null);
+              lockRef.current = false;
+            }, 220);
+          }
+        } else {
+          penaltyRef.current += PENALTY_MS;
+          setFeedback('wrong');
+          setTimeout(() => { setFeedback(null); lockRef.current = false; }, 420);
+        }
+      };
+
+      const resetGame = (clearName = false) => {
+        setScreen('title');
+        setSolved(0);
+        setElapsed(0);
+        setFeedback(null);
+        setProblem(null);
+        lockRef.current = false;
+        if (clearName) { setName(''); setTeam(0); }
+        refreshLB();
+      };
+
+      const clearLB = () => {
+        setPwInput('');
+        setShowPwModal(true);
+      };
+
+      const doActualClear = async () => {
+        setShowPwModal(false);
+        setLbBusy(true);
+        try {
+          const data = await clearLeaderboardRemote(pwInput);
+          setLeaderboard(data);
+          setLbUpdatedAt(Date.now());
+        } catch (e) {
+          alert((e && e.message) || '비밀번호가 틀렸거나 서버 오류가 발생했습니다.');
+        } finally {
+          setLbBusy(false);
+        }
+      };
+
+      const TeamPicker = ({ value, onChange }) => (
+        <div className="grid grid-cols-5 gap-1.5 md:gap-2">
+          {TEAMS.map(t => (
+            <button key={t.id} onClick={() => onChange(t.id)} type="button"
+              className={`py-2 md:py-2.5 rounded-xl font-black text-sm md:text-base transition border-2 ${value === t.id ? `bg-gradient-to-br ${t.grad} text-white border-white shadow-lg scale-105` : `${t.bg} ${t.text} border-transparent hover:scale-105`}`}>
+              {t.id}모둠
+            </button>
+          ))}
+        </div>
+      );
+
+      const TeamLeaderboard = ({ stats, highlightTeam }) => (
+        <div className="space-y-2">
+          {stats.map((ts, i) => {
+            const m = teamMeta(ts.team);
+            if (!m) return null;
+            const isHighlight = highlightTeam === ts.team;
+            const isTop = i === 0 && ts.count > 0;
+            return (
+              <div key={ts.team} className={`rounded-xl p-2.5 md:p-3 border-l-4 ${m.border} ${isHighlight ? 'bg-indigo-50 ring-2 ring-indigo-400' : isTop ? 'bg-yellow-50' : 'bg-slate-50'}`}>
+                <div className="flex justify-between items-center mb-1">
+                  <div className={`font-black text-sm md:text-base flex items-center gap-1.5 ${m.text}`}>
+                    <span className="bg-white/80 text-slate-700 px-1.5 py-0.5 rounded-md text-xs">{i+1}위</span>
+                    {m.emoji} {m.name}
+                    {isHighlight && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-md">우리 모둠</span>}
+                  </div>
+                  <span className="text-xs md:text-sm font-bold text-slate-500">{ts.count}/{TEAM_SIZE}명</span>
+                </div>
+                <div className="flex justify-between text-xs md:text-sm">
+                  <span className="text-slate-600">합산: <span className="font-mono font-bold text-slate-800">{ts.count > 0 ? formatTime(ts.sum) : '-'}</span></span>
+                  <span className="text-slate-600">평균: <span className="font-mono font-bold text-slate-800">{ts.count > 0 ? formatTime(ts.avg) : '-'}</span></span>
+                </div>
+                {ts.players.length > 0 && (
+                  <div className="mt-1.5 pl-2 border-l-2 border-slate-200 space-y-0.5">
+                    {ts.players.map((p, j) => (
+                      <div key={j} className="flex justify-between text-[11px] md:text-xs text-slate-600">
+                        <span className="truncate">{j+1}. {p.name}</span>
+                        <span className="font-mono">{formatTime(p.time)}</span>
+                      </div>
+                    ))}
+                    {Array.from({length: Math.max(0, TEAM_SIZE - ts.players.length)}).map((_, j) => (
+                      <div key={`empty-${j}`} className="flex justify-between text-[11px] md:text-xs text-slate-300">
+                        <span>· · · · · ·</span>
+                        <span className="font-mono">--:--.--</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+
+      const IndividualLeaderboard = ({ entries, highlight }) => (
+        <div className="space-y-1">
+          {entries.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">아직 기록이 없습니다.</div>}
+          {entries.slice(0, 10).map((e, i) => {
+            const m = teamMeta(e.team);
+            const isMine = highlight && e.name === highlight.name && Number(e.team) === Number(highlight.team) && e.time === highlight.time;
+            return (
+              <div key={i} className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm md:text-base font-bold ${isMine ? 'bg-indigo-200 text-indigo-900 ring-2 ring-indigo-500' : i === 0 ? 'bg-yellow-100 text-yellow-800' : i === 1 ? 'bg-slate-100 text-slate-700' : i === 2 ? 'bg-amber-100 text-amber-800' : 'bg-slate-50 text-slate-600'}`}>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span>{i+1}.</span>
+                  <span className="truncate">{e.name}</span>
+                  {m && <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded ${m.bg} ${m.text} font-black`}>{m.emoji}{m.id}</span>}
+                  {isMine && <span> ⭐</span>}
+                </span>
+                <span className="font-mono">{formatTime(e.time)}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+
+      const LeaderboardSection = ({ highlight }) => (
+        <>
+          {showPwModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowPwModal(false)}>
+              <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <h3 className="font-black text-slate-800 text-lg mb-1">🔒 선생님 인증</h3>
+                <p className="text-slate-500 text-sm mb-4">명예의 전당 전체 초기화는 선생님만 가능합니다.</p>
+                <input type="password" value={pwInput} onChange={e => setPwInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doActualClear()}
+                  placeholder="비밀번호" autoFocus
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 text-slate-800" />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowPwModal(false)}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition">취소</button>
+                  <button onClick={doActualClear}
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black py-2.5 rounded-xl shadow transition">초기화</button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="text-left">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-black text-slate-700 flex items-center gap-1.5">
+              🏆 명예의 전당
+              {usingRemote
+                ? <span className="text-[10px] md:text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">실시간 공유</span>
+                : <span className="text-[10px] md:text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-bold">기기 저장</span>}
+            </div>
+            <div className="flex gap-2 items-center">
+              {lbUpdatedAt > 0 && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {new Date(lbUpdatedAt).toLocaleTimeString('ko-KR', { hour12: false })} · {leaderboard.length}건
+                </span>
+              )}
+              <button onClick={refreshLB} disabled={lbBusy} className="text-xs font-bold text-slate-500 hover:text-indigo-600 disabled:opacity-50">{lbBusy ? '⏳' : '🔄'} 새로고침</button>
+              <button onClick={clearLB} disabled={lbBusy} className="text-xs text-slate-400 hover:text-rose-500 underline disabled:opacity-50">초기화</button>
+            </div>
+          </div>
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-3">
+            <button onClick={() => setLbTab('team')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'team' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🤝 모둠전</button>
+            <button onClick={() => setLbTab('individual')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'individual' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🏆 개인전</button>
+          </div>
+          {lbBusy && leaderboard.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">불러오는 중...</div>}
+          {lbTab === 'team' && <TeamLeaderboard stats={teamStats} highlightTeam={highlight?.team} />}
+          {lbTab === 'individual' && <IndividualLeaderboard entries={playersBest} highlight={highlight} />}
+          </div>
+        </>
+      );
+
+      // ============== 화면 렌더 ==============
+      if (screen === 'title') {
+        return (
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex flex-col font-sans overflow-hidden">
+            {/* 상단: 이름/모둠/시작 (스크롤 없이 항상 보임) */}
+            <div className="flex-shrink-0 flex flex-col items-center px-4 pt-4 pb-2 gap-2">
+              <div className="flex items-center gap-3">
+                <Character scale={0.7} />
+                <div className="text-white text-left">
+                  <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight">분수 폭발!</h1>
+                  <p className="text-xs sm:text-sm text-white/80 font-bold">약분·통분 스피드 게임 ⚡</p>
+                </div>
+              </div>
+
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-left text-[11px] sm:text-xs md:text-sm text-amber-900 mb-3 leading-relaxed break-keep">
+                  <span className="font-bold">📜 규칙: </span>
+                  30문제 · 3장 카드 중 정답 선택 · 오답 <strong className="text-rose-600">+10초</strong> · 완주 시 💥 · <strong>모둠전</strong> 합산시간 경쟁
+                </div>
+
+                <input type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="이름을 입력하세요" maxLength={12}
+                  className="w-full px-4 py-3 text-base sm:text-lg text-center font-bold rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-2" />
+
+                <div className="mb-3">
+                  <div className="text-xs sm:text-sm font-bold text-slate-600 mb-1.5">우리 모둠을 선택하세요</div>
+                  <TeamPicker value={team} onChange={setTeam} />
+                </div>
+
+                <button onClick={startGame} disabled={!name.trim() || !team}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white text-base sm:text-xl font-black py-3 rounded-2xl shadow-lg active:scale-95 transition disabled:opacity-50 disabled:active:scale-100">
+                  🚀 시작하기
+                </button>
+              </div>
+            </div>
+
+            {/* 하단: 명예의 전당 (스크롤 가능) */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto">
+                <LeaderboardSection highlight={null} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (screen === 'countdown') {
+        return (
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600 flex items-center justify-center font-sans">
+            <div className="text-white text-[12rem] md:text-[20rem] font-black drop-shadow-2xl animate-fade-in" style={{ animationDuration: '0.2s' }}>
+              {countdown > 0 ? countdown : 'GO!'}
+            </div>
+          </div>
+        );
+      }
+
+      if (screen === 'playing' || screen === 'popping') {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        const maxScale = isMobile ? 1.4 : 4.0;
+        const scale = 0.5 + (solved / TOTAL_PROBLEMS) * (maxScale - 0.5);
+        const progressPct = (solved / TOTAL_PROBLEMS) * 100;
+        const m = teamMeta(team);
+        return (
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-slate-900 to-slate-700 flex flex-col font-sans text-white overflow-hidden">
+            <div className="flex justify-between items-center px-3 md:px-8 py-2.5 md:py-4 bg-black/30 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-1.5 md:gap-3 min-w-0">
+                {m && <span className={`bg-gradient-to-br ${m.grad} text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded font-black text-[10px] md:text-sm`}>{m.emoji}{m.id}</span>}
+                <span className="text-amber-300 font-black text-sm md:text-xl truncate">{name}</span>
+                <span className="text-[10px] md:text-sm text-slate-300 bg-white/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">{solved}/{TOTAL_PROBLEMS}</span>
+              </div>
+              <div className="text-xl md:text-4xl font-mono font-black tracking-tight tabular-nums">
+                {formatTime(elapsed)}
+              </div>
+            </div>
+
+            <div className="h-2 md:h-3 bg-white/10 flex-shrink-0">
+              <div className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300" style={{ width: `${progressPct}%` }}></div>
+            </div>
+
+            {/* 모바일: 세로 배치 (캐릭터 상단 작게, 문제+카드 하단) / 데스크톱: 좌우 분할 */}
+            <div className={`flex-1 flex flex-col md:flex-row overflow-hidden ${feedback === 'wrong' ? 'shake' : ''}`}>
+
+              {/* 캐릭터 영역 */}
+              <div className="relative flex items-center justify-center flex-shrink-0 overflow-hidden
+                              h-[15dvh] sm:h-[150px] md:overflow-visible md:h-auto md:w-[38%] lg:w-[42%]">
+                <div className={feedback === 'correct' && screen === 'playing' ? 'grow-pulse' : ''}>
+                  <Character scale={scale} popping={screen === 'popping'} />
+                </div>
+                {screen === 'popping' && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {confettiBits.map(b => (
+                      <span key={b.id} className="absolute text-3xl md:text-5xl confetti"
+                        style={{ '--tx': `${b.tx}px`, '--ty': `${b.ty}px`, '--r': `${b.r}deg` }}>{b.emoji}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 문제 + 카드 영역 */}
+              <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 gap-2 sm:gap-3 md:gap-5 overflow-hidden justify-center md:justify-start min-h-0">
+                {problem && screen === 'playing' && (
+                  <>
+                    <div className="bg-white text-slate-800 rounded-xl md:rounded-3xl px-3 py-2 sm:px-5 sm:py-3 md:px-8 md:py-5 text-center shadow-2xl flex-shrink-0">
+                      <div className="text-[10px] sm:text-xs md:text-sm font-bold text-slate-400 mb-0.5 md:mb-2">{problem.tag}</div>
+                      <div className="text-base sm:text-xl md:text-3xl font-black flex items-center justify-center flex-wrap gap-0.5 sm:gap-1 md:gap-2">
+                        {problem.type === 'reduce' ? (
+                          <>
+                            <Frac n={problem.original.n} d={problem.original.d} />
+                            <span>{problem.questionText}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Frac n={problem.original.n1} d={problem.original.d1} />
+                            <span>와(과)</span>
+                            <Frac n={problem.original.n2} d={problem.original.d2} />
+                            <span>{problem.questionText}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 카드: 항상 가로 3열 */}
+                    <div className="flex flex-row gap-1.5 sm:gap-2 md:gap-4 h-[38dvh] sm:h-[140px] md:h-[170px]">
+                      {problem.choices.map((c, i) => (
+                        <ChoiceCard key={i} choice={c} idx={i} onPick={handlePick} disabled={lockRef.current} />
+                      ))}
+                    </div>
+
+                    {feedback === 'wrong' && (
+                      <div className="text-center text-rose-300 font-black text-sm sm:text-lg md:text-2xl animate-fade-in flex-shrink-0">❌ 오답! +10초 페널티</div>
+                    )}
+                    {feedback === 'correct' && (
+                      <div className="text-center text-emerald-300 font-black text-sm sm:text-lg md:text-2xl animate-fade-in flex-shrink-0">⭕ 정답!</div>
+                    )}
+                  </>
+                )}
+
+                {screen === 'popping' && (
+                  <div className="flex-1 flex items-center justify-center text-yellow-300 font-black text-3xl md:text-6xl animate-fade-in">💥 펑!</div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (screen === 'result') {
+        const myHighlight = { name: name.trim(), team, time: finalTime };
+        const myIndvRank = playersBest.findIndex(e => e.name === name.trim() && Number(e.team) === Number(team) && e.time === finalTime) + 1;
+        const myTeamRank = teamStats.findIndex(t => t.team === team) + 1;
+        const myTeamStat = teamStats.find(t => t.team === team);
+        const m = teamMeta(team);
+        return (
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-pink-600 via-purple-700 to-indigo-700 flex flex-col font-sans overflow-hidden">
+            {/* 상단 고정: 기록 + 순위 + 버튼 */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-2">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-xl mx-auto text-center animate-fade-in">
+                <div className="text-2xl sm:text-5xl mb-0.5">🎉</div>
+                <h2 className="text-base sm:text-2xl md:text-3xl font-black text-slate-800 mb-0.5">캐릭터 폭발 성공!</h2>
+                <p className="text-slate-500 font-bold mb-2 text-xs sm:text-sm md:text-base">
+                  {m && <span className={`inline-block px-1.5 py-0.5 rounded ${m.bg} ${m.text} text-xs mr-1 font-black`}>{m.emoji}{m.name}</span>}
+                  {name} 님 수고하셨습니다
+                </p>
+
+                <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 mb-2 shadow-inner">
+                  <div className="text-[10px] sm:text-xs md:text-sm text-slate-400 mb-0.5">최종 기록</div>
+                  <div className="text-2xl sm:text-4xl md:text-5xl font-black font-mono tabular-nums text-amber-300">{formatTime(finalTime)}</div>
+                </div>
+
+                {submitStatus && (
+                  <div className={`rounded-xl px-3 py-1.5 mb-2 text-[11px] sm:text-xs md:text-sm font-bold ${
+                    submitStatus.saved === 'remote' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    submitStatus.saved === 'local-fallback' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                    'bg-slate-50 text-slate-600 border border-slate-200'
+                  }`}>
+                    {submitStatus.saved === 'remote' && '✅ 서버 저장 완료 — 모든 친구에게 공유됨'}
+                    {submitStatus.saved === 'local-fallback' && (
+                      <>⚠️ 서버 저장 실패 — 이 기기에만 저장됨
+                        <div className="font-mono text-[10px] mt-0.5 break-all opacity-80">에러: {submitStatus.error}</div>
+                      </>
+                    )}
+                    {submitStatus.saved === 'local' && 'ℹ️ 로컬 모드 — 이 기기에만 저장됨'}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-white border-2 border-slate-200 rounded-xl p-2">
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold">개인전 순위</div>
+                    <div className="text-xl sm:text-2xl font-black text-indigo-600">{myIndvRank > 0 ? `${myIndvRank}위` : '-'}</div>
+                  </div>
+                  <div className={`border-2 rounded-xl p-2 ${m ? m.bg : 'bg-white'} ${m ? m.border : 'border-slate-200'}`}>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold">{m ? m.name : '모둠'} 순위</div>
+                    <div className={`text-xl sm:text-2xl font-black ${m ? m.text : 'text-slate-600'}`}>
+                      {myTeamStat && myTeamStat.count > 0 ? `${myTeamRank}위 (${myTeamStat.count}/${TEAM_SIZE})` : '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-row gap-2">
+                  <button onClick={() => resetGame(true)}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 sm:py-3 rounded-xl transition text-sm sm:text-base">
+                    👥 다음 사람
+                  </button>
+                  <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
+                    className="flex-1 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-black py-2.5 sm:py-3 rounded-xl shadow-lg transition active:scale-95 text-sm sm:text-base">
+                    🔁 다시 도전
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 하단: 명예의 전당 (스크롤 가능) */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-xl mx-auto">
+                <LeaderboardSection highlight={myHighlight} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
