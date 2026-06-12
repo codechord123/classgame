@@ -4,11 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>분수 방탈출!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
+    * { font-family: 'Gowun Dodum', sans-serif; }
+    .font-display { font-family: 'Jua', sans-serif; }
     @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
     @keyframes shake {
@@ -18,15 +23,20 @@
     }
     .shake { animation: shake 0.4s ease-in-out; }
     @keyframes walk-bob {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(-2deg); }
     }
-    .walk-bob { animation: walk-bob 0.3s ease-in-out infinite; }
+    .walk-bob { animation: walk-bob 0.28s ease-in-out infinite; }
     @keyframes bounce-soft {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
     .bounce-soft { animation: bounce-soft 1s ease-in-out infinite; }
+    @keyframes idle-breathe {
+      0%, 100% { transform: scaleY(1) translateY(0); }
+      50% { transform: scaleY(1.03) translateY(-2px); }
+    }
+    .idle-breathe { animation: idle-breathe 1.8s ease-in-out infinite; }
     @keyframes key-pop {
       0% { transform: scale(0) rotate(-30deg); opacity: 0; }
       60% { transform: scale(1.4) rotate(10deg); opacity: 1; }
@@ -34,15 +44,15 @@
     }
     .key-pop { animation: key-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
     @keyframes toast-in {
-      0% { transform: translateY(16px); opacity: 0; }
-      12% { transform: translateY(0); opacity: 1; }
-      85% { transform: translateY(0); opacity: 1; }
-      100% { transform: translateY(-8px); opacity: 0; }
+      0% { transform: translateY(16px) scale(0.9); opacity: 0; }
+      12% { transform: translateY(0) scale(1); opacity: 1; }
+      85% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-8px) scale(0.95); opacity: 0; }
     }
     .toast-in { animation: toast-in 1.8s ease-out forwards; }
     @keyframes glow {
       0%, 100% { filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.5)); }
-      50% { filter: drop-shadow(0 0 18px rgba(250, 204, 21, 1)); }
+      50% { filter: drop-shadow(0 0 22px rgba(250, 204, 21, 1)); }
     }
     .glow { animation: glow 1.2s ease-in-out infinite; }
     @keyframes sparkle {
@@ -55,6 +65,44 @@
       100% { transform: translate(var(--tx), var(--ty)) rotate(var(--r)); opacity: 0; }
     }
     .confetti { animation: confetti 1.4s ease-out forwards; }
+    @keyframes drift {
+      0% { transform: translate(0, 0); opacity: 0; }
+      10% { opacity: var(--op, 0.5); }
+      90% { opacity: var(--op, 0.5); }
+      100% { transform: translate(var(--dx, 30px), var(--dy, -120px)); opacity: 0; }
+    }
+    .drift-particle { animation: drift linear infinite; }
+    @keyframes ray-sway {
+      0%, 100% { opacity: 0.18; transform: rotate(var(--rot, 8deg)) translateX(0); }
+      50% { opacity: 0.32; transform: rotate(calc(var(--rot, 8deg) - 2deg)) translateX(6px); }
+    }
+    .light-ray { animation: ray-sway 6s ease-in-out infinite; mix-blend-mode: screen; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.6); opacity: 0.7; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .pulse-ring { animation: pulse-ring 1.6s ease-out infinite; }
+    @keyframes title-glow {
+      0%, 100% { text-shadow: 0 0 18px rgba(251,191,36,0.55), 0 2px 0 rgba(0,0,0,0.4); }
+      50% { text-shadow: 0 0 32px rgba(251,191,36,0.9), 0 2px 0 rgba(0,0,0,0.4); }
+    }
+    .title-glow { animation: title-glow 2.4s ease-in-out infinite; }
+    .glass-panel {
+      background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(255,255,255,0.88));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .glass-dark {
+      background: linear-gradient(135deg, rgba(15,23,42,0.75), rgba(15,23,42,0.55));
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .vignette::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.55) 100%);
+      pointer-events: none;
+    }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .dpad-btn { touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -600,10 +648,142 @@
       return (
         <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
           {scene}
+          {/* 천장에서 들어오는 빛줄기 */}
+          <div className="light-ray absolute -top-10 left-[12%] w-16 sm:w-24 h-[70%]"
+            style={{ background: 'linear-gradient(to bottom, rgba(255,250,220,0.55), transparent)', '--rot': '10deg' }} />
+          <div className="light-ray absolute -top-10 left-[55%] w-20 sm:w-32 h-[78%]"
+            style={{ background: 'linear-gradient(to bottom, rgba(255,250,220,0.4), transparent)', '--rot': '-7deg', animationDelay: '-3s' }} />
           <div className="absolute inset-0 bg-black/15" />
         </div>
       );
     };
+
+    // 방마다 다른 분위기 파티클 (버블/먼지/불씨/금가루…)
+    const ROOM_FX = {
+      1: { colors: ['#34d399','#a7f3d0','#6ee7b7'], rise: true  },
+      2: { colors: ['#fcd34d','#fef3c7','#d6b25e'], rise: false },
+      3: { colors: ['#a5b4fc','#fbbf24','#c7d2fe'], rise: false },
+      4: { colors: ['#f9a8d4','#bef264','#86efac'], rise: true  },
+      5: { colors: ['#fb923c','#fbbf24','#fca5a5'], rise: true  },
+      6: { colors: ['#e2e8f0','#67e8f9','#c4b5fd'], rise: false },
+      7: { colors: ['#fde047','#fbbf24','#fef9c3'], rise: true  },
+    };
+    const AmbientFX = ({ roomId }) => {
+      const parts = useMemo(() => {
+        const cfg = ROOM_FX[roomId] || ROOM_FX[1];
+        return Array.from({ length: 16 }).map((_, i) => ({
+          id: i,
+          left: Math.random() * 100,
+          top: cfg.rise ? 55 + Math.random() * 45 : Math.random() * 100,
+          size: 2 + Math.random() * 4,
+          color: cfg.colors[i % cfg.colors.length],
+          dur: 5 + Math.random() * 7,
+          delay: -Math.random() * 10,
+          dx: (Math.random() - 0.5) * 60,
+          dy: cfg.rise ? -(80 + Math.random() * 160) : (Math.random() - 0.5) * 80,
+          op: 0.3 + Math.random() * 0.45,
+        }));
+      }, [roomId]);
+      return (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[5]">
+          {parts.map(p => (
+            <span key={p.id} className="drift-particle absolute rounded-full"
+              style={{
+                left: p.left + '%', top: p.top + '%',
+                width: p.size + 'px', height: p.size + 'px',
+                background: p.color,
+                boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+                animationDuration: p.dur + 's',
+                animationDelay: p.delay + 's',
+                '--dx': p.dx + 'px', '--dy': p.dy + 'px', '--op': p.op,
+              }} />
+          ))}
+        </div>
+      );
+    };
+
+    // ============== 탐험가 캐릭터 (SVG 스프라이트, 걷기 2프레임) ==============
+    const ExplorerChar = ({ moving, facing }) => {
+      const [frame, setFrame] = useState(0);
+      useEffect(() => {
+        if (!moving) { setFrame(0); return; }
+        const t = setInterval(() => setFrame(f => 1 - f), 130);
+        return () => clearInterval(t);
+      }, [moving]);
+      const legs = frame === 0
+        ? { l: 'M 42,88 L 33,107', r: 'M 58,88 L 68,103' }
+        : { l: 'M 42,88 L 50,107', r: 'M 58,88 L 61,107' };
+      const arms = !moving
+        ? { l: 'M 36,62 L 31,78', r: 'M 64,62 L 69,78' }
+        : frame === 0
+          ? { l: 'M 36,62 L 26,75', r: 'M 64,62 L 75,55' }
+          : { l: 'M 36,62 L 28,52', r: 'M 64,62 L 73,76' };
+      return (
+        <div className={moving ? 'walk-bob' : 'idle-breathe'} style={{ transform: `scaleX(${facing})` }}>
+          <svg viewBox="0 0 100 115" className="w-[52px] h-[60px] sm:w-[60px] sm:h-[69px] md:w-[70px] md:h-[81px]" xmlns="http://www.w3.org/2000/svg">
+            {/* 다리 */}
+            <path d={legs.l} stroke="#1e3a8a" strokeWidth="9" strokeLinecap="round" fill="none" />
+            <path d={legs.r} stroke="#1d4ed8" strokeWidth="9" strokeLinecap="round" fill="none" />
+            {/* 팔 (뒤) */}
+            <path d={arms.l} stroke="#b45309" strokeWidth="8" strokeLinecap="round" fill="none" />
+            {/* 몸통 (탐험가 셔츠+조끼) */}
+            <rect x="33" y="54" width="34" height="38" rx="11" fill="#d97706" stroke="#92400e" strokeWidth="2" />
+            <path d="M 37,56 L 37,90 L 45,90 L 45,56 Z" fill="#7c2d12" />
+            <path d="M 63,56 L 63,90 L 55,90 L 55,56 Z" fill="#7c2d12" />
+            <circle cx="50" cy="66" r="2.2" fill="#fde68a" />
+            <circle cx="50" cy="76" r="2.2" fill="#fde68a" />
+            {/* 가방끈 */}
+            <line x1="40" y1="56" x2="58" y2="90" stroke="#451a03" strokeWidth="4" opacity="0.7" />
+            {/* 팔 (앞) */}
+            <path d={arms.r} stroke="#d97706" strokeWidth="8" strokeLinecap="round" fill="none" />
+            {/* 머리 */}
+            <circle cx="50" cy="34" r="20" fill="#ffd9ad" stroke="#c08552" strokeWidth="1.5" />
+            <circle cx="44" cy="33" r="3.2" fill="#1f2937" />
+            <circle cx="45.2" cy="31.8" r="1.1" fill="#fff" />
+            <circle cx="58" cy="33" r="3.2" fill="#1f2937" />
+            <circle cx="59.2" cy="31.8" r="1.1" fill="#fff" />
+            <path d="M 46,42 Q 51,46.5 56,42" stroke="#92400e" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+            <circle cx="37" cy="39" r="3" fill="#fb923c" opacity="0.5" />
+            <circle cx="63" cy="39" r="3" fill="#fb923c" opacity="0.5" />
+            {/* 탐험가 모자 */}
+            <path d="M 28,25 Q 50,4 72,25 L 72,29 Q 50,21 28,29 Z" fill="#92400e" stroke="#78350f" strokeWidth="1.5" />
+            <ellipse cx="50" cy="27.5" rx="29" ry="6" fill="#78350f" />
+            <path d="M 33,22 Q 50,16 67,22" stroke="#451a03" strokeWidth="4" fill="none" />
+          </svg>
+        </div>
+      );
+    };
+
+    // ============== 문 (SVG 스프라이트) ==============
+    const DoorSprite = ({ unlocked }) => (
+      <svg viewBox="0 0 80 112" className="w-[58px] h-[81px] sm:w-[70px] sm:h-[98px] md:w-[82px] md:h-[115px]" xmlns="http://www.w3.org/2000/svg">
+        {/* 문틀 */}
+        <rect x="2" y="2" width="76" height="110" rx="6" fill="#2a1205" />
+        <rect x="8" y="8" width="64" height="102" rx="4" fill={unlocked ? '#b45309' : '#6b3410'} />
+        {/* 나뭇결 패널 */}
+        <rect x="14" y="16" width="52" height="34" rx="3" fill="none" stroke="#451a03" strokeWidth="3" />
+        <rect x="14" y="58" width="52" height="44" rx="3" fill="none" stroke="#451a03" strokeWidth="3" />
+        <line x1="22" y1="22" x2="22" y2="44" stroke="#451a03" strokeWidth="1.5" opacity="0.6" />
+        <line x1="58" y1="64" x2="58" y2="96" stroke="#451a03" strokeWidth="1.5" opacity="0.6" />
+        {/* 경첩 */}
+        <rect x="8" y="20" width="6" height="10" rx="1.5" fill="#1c1917" />
+        <rect x="8" y="84" width="6" height="10" rx="1.5" fill="#1c1917" />
+        {/* 손잡이 */}
+        <circle cx="62" cy="56" r="4.5" fill={unlocked ? '#fde047' : '#d6a206'} stroke="#451a03" strokeWidth="1.5" />
+        {/* 열쇠 구멍 */}
+        <g fill={unlocked ? '#fde047' : '#140a04'}>
+          <circle cx="40" cy="74" r="5.5" />
+          <polygon points="40,77 35,90 45,90" />
+        </g>
+        {/* 열림 빛 */}
+        {unlocked && (
+          <>
+            <rect x="8" y="8" width="64" height="102" rx="4" fill="#fde047" opacity="0.2" />
+            <rect x="6" y="6" width="68" height="106" rx="5" fill="none" stroke="#fde047" strokeWidth="2.5" opacity="0.9" />
+          </>
+        )}
+      </svg>
+    );
 
     // ============== 메인 ==============
     const PENALTY_MS = 8000;
@@ -1078,15 +1258,17 @@
       // ============== 화면: 타이틀 ==============
       if (screen === 'title') {
         return (
-          <div className="w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col font-sans overflow-hidden">
-            <div className="flex-shrink-0 flex flex-col items-center px-4 pt-4 pb-2 gap-2">
-              <div className="text-center text-white drop-shadow-2xl">
-                <div className="text-4xl sm:text-5xl">🕵️🗝️</div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight">분수 방탈출!</h1>
-                <p className="text-xs sm:text-sm text-white/80 font-bold">방을 탐험하고, 분수 문제를 풀어 열쇠를 모아라</p>
+          <div className="vignette relative w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col overflow-hidden">
+            <div className="absolute inset-0 opacity-40"><RoomScene roomId={5} /></div>
+            <AmbientFX roomId={7} />
+            <div className="relative z-10 flex-shrink-0 flex flex-col items-center px-4 pt-4 pb-2 gap-2">
+              <div className="text-center text-white">
+                <div className="text-4xl sm:text-5xl drop-shadow-2xl">🗝️</div>
+                <h1 className="font-display text-3xl sm:text-4xl md:text-5xl tracking-wider text-yellow-300 title-glow">분수 방탈출</h1>
+                <p className="text-xs sm:text-sm text-white/85 font-bold mt-1 tracking-wide">7개의 방 · 숨겨진 열쇠 · 이분모 분수의 비밀</p>
               </div>
 
-              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-left text-[11px] sm:text-xs md:text-sm text-amber-900 mb-3 leading-relaxed break-keep">
                   <span className="font-bold">📜 게임 방법: </span>
                   캐릭터를 움직여 방 안 물건을 <strong>조사</strong>하세요 · 열쇠가 숨겨진 물건에선 <strong>이분모 분수 문제</strong>가! · 맞히면 🗝️ 획득 · <strong>열쇠 3개</strong>를 모아 문으로 탈출 · 총 <strong>7개 방</strong> · 오답 <strong className="text-rose-600">+8초</strong>
@@ -1096,8 +1278,8 @@
                   className="w-full px-4 py-2.5 sm:py-3 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 font-bold text-slate-800" />
                 <TeamPicker value={team} onChange={setTeam} />
                 <button onClick={startGame} disabled={!name.trim() || team === null}
-                  className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-black py-3 sm:py-4 rounded-xl shadow-lg text-base sm:text-lg transition">
-                  🚪 첫 번째 방 들어가기
+                  className="w-full mt-3 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:via-orange-400 hover:to-rose-400 disabled:from-slate-300 disabled:via-slate-300 disabled:to-slate-400 text-white font-display py-3 sm:py-4 rounded-xl shadow-[0_8px_24px_rgba(249,115,22,0.4)] text-lg sm:text-xl tracking-wider transition ring-2 ring-white/30">
+                  🚪 탐험 시작
                 </button>
                 <div className="mt-3 grid grid-cols-7 gap-1">
                   {ROOMS.map((r) => (
@@ -1109,8 +1291,8 @@
                 </div>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
-              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg mx-auto">
+            <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg mx-auto">
                 <LeaderboardSection />
               </div>
             </div>
@@ -1121,11 +1303,12 @@
       // ============== 화면: 카운트다운 ==============
       if (screen === 'countdown') {
         return (
-          <div className="w-full h-[100dvh] bg-slate-950 flex items-center justify-center font-sans">
-            <div className="text-center">
-              <div className="text-6xl sm:text-8xl mb-2">🕵️</div>
-              <div className="text-white text-7xl sm:text-9xl font-black drop-shadow-2xl">{countdown || 'GO!'}</div>
-              <div className="text-white/60 text-sm sm:text-base font-bold mt-2">{ROOMS[0].emoji} {ROOMS[0].name}에 잠입한다...</div>
+          <div className="vignette relative w-full h-[100dvh] bg-slate-950 flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 opacity-25"><RoomScene roomId={1} /></div>
+            <div className="relative z-10 text-center">
+              <div className="mx-auto w-fit mb-3"><ExplorerChar moving={true} facing={1} /></div>
+              <div className="font-display text-yellow-300 text-7xl sm:text-9xl drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]">{countdown || 'GO!'}</div>
+              <div className="text-white/70 text-sm sm:text-base font-bold mt-3 tracking-widest">{ROOMS[0].emoji} {ROOMS[0].name}에 잠입한다...</div>
             </div>
           </div>
         );
@@ -1136,12 +1319,12 @@
         const room = currentRoom;
         const nextRoom = ROOMS[roomIdx + 1];
         return (
-          <div className={`relative w-full h-[100dvh] bg-gradient-to-br ${room.bg} flex flex-col items-center justify-center font-sans p-4 overflow-hidden`}>
+          <div className={`relative w-full h-[100dvh] bg-gradient-to-br ${room.bg} flex flex-col items-center justify-center p-4 overflow-hidden`}>
             <RoomScene roomId={room.id} />
-            <div className="relative z-10 bg-white/95 rounded-3xl shadow-2xl p-5 sm:p-8 max-w-md w-full animate-fade-in text-center">
+            <div className="relative z-10 glass-panel rounded-3xl shadow-2xl p-5 sm:p-8 max-w-md w-full animate-fade-in text-center">
               <div className="text-5xl sm:text-7xl mb-2">🚪✨</div>
               <div className="text-xs sm:text-sm font-black text-slate-500 mb-1">방 {room.id} 탈출!</div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-3">{room.emoji} {room.name}</h2>
+              <h2 className="font-display text-2xl sm:text-3xl text-slate-800 mb-3 tracking-wide">{room.emoji} {room.name}</h2>
               <div className="font-mono text-lg sm:text-2xl font-black text-indigo-600 mb-3">{formatTime(elapsed)}</div>
               {nextRoom && (
                 <div className="mt-4 text-slate-600 text-sm sm:text-base">
@@ -1157,7 +1340,7 @@
       // ============== 화면: 결승 폭죽 ==============
       if (screen === 'finishing') {
         return (
-          <div className="w-full h-[100dvh] bg-gradient-to-br from-yellow-500 via-orange-500 to-rose-600 flex items-center justify-center relative overflow-hidden font-sans">
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-yellow-500 via-orange-500 to-rose-600 flex items-center justify-center relative overflow-hidden">
             {confettiBits.map(b => (
               <span key={b.id} className="absolute text-3xl confetti"
                 style={{ '--tx': `${b.tx}px`, '--ty': `${b.ty}px`, '--r': `${b.r}deg` }}>
@@ -1166,7 +1349,7 @@
             ))}
             <div className="text-center text-white drop-shadow-2xl animate-fade-in">
               <div className="text-7xl sm:text-9xl">🏆</div>
-              <div className="text-4xl sm:text-6xl font-black mt-2">전체 탈출 성공!</div>
+              <div className="font-display text-4xl sm:text-6xl mt-2 tracking-wider title-glow">전체 탈출 성공!</div>
             </div>
           </div>
         );
@@ -1176,12 +1359,12 @@
       if (screen === 'result') {
         const highlight = { name: name.trim(), team, time: finalTime };
         return (
-          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-slate-900 flex flex-col font-sans overflow-hidden">
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-indigo-700 via-purple-700 to-slate-900 flex flex-col overflow-hidden">
             <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
-              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto animate-fade-in">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto animate-fade-in">
                 <div className="text-center">
                   <div className="text-3xl sm:text-5xl mb-1">🗝️🏆</div>
-                  <h2 className="text-lg sm:text-2xl font-black text-slate-800">7개 방 전체 탈출!</h2>
+                  <h2 className="font-display text-xl sm:text-3xl text-slate-800 tracking-wide">7개 방 전체 탈출!</h2>
                   <div className="font-mono text-3xl sm:text-5xl font-black text-indigo-600 mt-1">{formatTime(finalTime)}</div>
                   <div className="text-xs sm:text-sm text-slate-500 mt-1">
                     {name} · {teamMeta(team)?.name}
@@ -1206,7 +1389,7 @@
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 sm:px-4 pb-4 hide-scrollbar">
-              <div className="bg-white/95 rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto">
                 <LeaderboardSection highlight={highlight} />
               </div>
             </div>
@@ -1223,42 +1406,47 @@
         const nearDoor = nearTarget && nearTarget.type === 'door';
 
         return (
-          <div className={`relative w-full h-[100dvh] bg-gradient-to-br ${room.bg} flex flex-col font-sans overflow-hidden`}>
+          <div className={`relative w-full h-[100dvh] bg-gradient-to-br ${room.bg} flex flex-col overflow-hidden`}>
             {/* HUD */}
-            <div className="relative flex-shrink-0 bg-black/60 backdrop-blur-sm text-white px-3 py-2 flex items-center justify-between gap-2 z-30">
+            <div className="relative flex-shrink-0 glass-dark text-white px-3 py-2 flex items-center justify-between gap-2 z-30 border-b border-white/10">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-base sm:text-xl">{room.emoji}</span>
+                <span className="text-xl sm:text-2xl drop-shadow-lg">{room.emoji}</span>
                 <div className="min-w-0">
-                  <div className="text-[10px] sm:text-xs opacity-80 font-bold">방 {room.id}/{TOTAL_ROOMS}</div>
-                  <div className="text-sm sm:text-base font-black truncate">{room.name}</div>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    {ROOMS.map(r => (
+                      <span key={r.id} className={`w-1.5 h-1.5 rounded-full transition-all ${r.id - 1 < roomIdx ? 'bg-emerald-400' : r.id - 1 === roomIdx ? 'bg-yellow-300 ring-2 ring-yellow-300/40 scale-125' : 'bg-white/25'}`} />
+                    ))}
+                  </div>
+                  <div className="text-sm sm:text-lg font-display tracking-wide truncate">{room.name}</div>
                 </div>
               </div>
               {/* 열쇠 수집 현황 */}
-              <div key={keyGetAnim} className="flex items-center gap-1 bg-black/40 rounded-xl px-2 py-1">
+              <div key={keyGetAnim} className="flex items-center gap-1 bg-black/40 border border-yellow-500/30 rounded-xl px-2.5 py-1 shadow-inner">
                 {[...Array(KEYS_PER_ROOM)].map((_, i) => (
                   <span key={i} className={`text-lg sm:text-2xl ${i < keysFound ? (i === keysFound-1 ? 'key-pop' : '') : 'opacity-25 grayscale'}`}>🗝️</span>
                 ))}
               </div>
-              <div className="font-mono font-black text-base sm:text-xl">{formatTime(elapsed)}</div>
+              <div className="font-mono font-black text-base sm:text-xl bg-black/40 border border-white/10 rounded-xl px-2.5 py-1 tabular-nums">{formatTime(elapsed)}</div>
             </div>
 
             {/* ===== 게임 영역 (탐험) ===== */}
-            <div ref={areaRef} className="relative flex-1 overflow-hidden select-none">
+            <div ref={areaRef} className="vignette relative flex-1 overflow-hidden select-none">
               <RoomScene roomId={room.id} />
+              <AmbientFX roomId={room.id} />
 
               {/* 문 */}
               <div className="absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
                 style={{ left: DOOR_POS.x + '%', top: DOOR_POS.y + '%' }}
                 onClick={() => { if (nearDoor) interact(); }}>
-                {doorUnlocked && <div className="text-xl sm:text-2xl sparkle absolute -top-6">✨</div>}
-                <div className={`text-5xl sm:text-6xl md:text-7xl ${doorUnlocked ? 'glow' : ''} ${nearDoor ? 'cursor-pointer' : ''}`}>
-                  {doorUnlocked ? '🚪' : '🚪'}
+                {doorUnlocked && <div className="text-xl sm:text-2xl sparkle absolute -top-6 z-10">✨</div>}
+                <div className={`${doorUnlocked ? 'glow' : 'drop-shadow-[0_5px_8px_rgba(0,0,0,0.6)]'} ${nearDoor ? 'cursor-pointer scale-105' : ''} transition-transform`}>
+                  <DoorSprite unlocked={doorUnlocked} />
                 </div>
-                <div className={`text-[9px] sm:text-xs font-black px-1.5 py-0.5 rounded-md -mt-1 ${doorUnlocked ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white/90'}`}>
+                <div className={`text-[9px] sm:text-xs font-display px-2 py-0.5 rounded-md -mt-1 shadow-lg ${doorUnlocked ? 'bg-gradient-to-r from-yellow-400 to-amber-400 text-yellow-950' : 'glass-dark text-white/90'}`}>
                   {doorUnlocked ? '탈출구 OPEN!' : `🔒 열쇠 ${KEYS_PER_ROOM}개`}
                 </div>
                 {nearDoor && (
-                  <div className="absolute -top-10 bg-white text-slate-800 text-[10px] sm:text-xs font-black px-2 py-1 rounded-lg shadow-lg bounce-soft whitespace-nowrap">
+                  <div className="absolute -top-10 glass-panel text-slate-800 text-[10px] sm:text-xs font-display px-2.5 py-1 rounded-lg shadow-2xl bounce-soft whitespace-nowrap">
                     {doorUnlocked ? '🔓 조사 버튼으로 탈출!' : '잠겨있다...'}
                   </div>
                 )}
@@ -1272,14 +1460,19 @@
                     className="absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
                     style={{ left: o.x + '%', top: o.y + '%' }}
                     onClick={() => { if (isNear) interact(); }}>
+                    {/* 바닥 그림자 */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1.5 w-10 sm:w-12 h-2.5 bg-black/40 rounded-full blur-[3px]" />
                     {isNear && !o.opened && (
-                      <div className="absolute -top-7 text-xl sm:text-2xl bounce-soft">❗</div>
+                      <>
+                        <div className="pulse-ring absolute inset-0 -m-2 rounded-full border-2 border-yellow-300/80" />
+                        <div className="absolute -top-9 glass-dark text-yellow-200 text-[10px] sm:text-xs font-display px-2.5 py-1 rounded-lg bounce-soft whitespace-nowrap shadow-2xl">🔍 {o.name}</div>
+                      </>
                     )}
-                    <div className={`text-3xl sm:text-4xl md:text-5xl transition-all ${o.opened ? 'opacity-35 grayscale' : ''} ${o.examined && !o.hasKey ? 'opacity-50' : ''} ${isNear && !o.opened ? 'scale-125 cursor-pointer drop-shadow-[0_0_10px_rgba(255,255,255,0.7)]' : ''}`}>
+                    <div className={`relative text-3xl sm:text-4xl md:text-5xl transition-all duration-200 ${o.opened ? 'opacity-35 grayscale' : ''} ${o.examined && !o.hasKey ? 'opacity-50' : ''} ${isNear && !o.opened ? 'scale-125 cursor-pointer drop-shadow-[0_0_12px_rgba(253,224,71,0.9)]' : 'drop-shadow-[0_4px_5px_rgba(0,0,0,0.55)]'}`}>
                       {o.emoji}
                     </div>
-                    {o.opened && <div className="text-[9px] sm:text-[11px] font-black text-emerald-300 bg-black/50 px-1 rounded">✔ 획득</div>}
-                    {o.examined && !o.hasKey && !o.opened && <div className="text-[9px] sm:text-[11px] font-black text-slate-300 bg-black/50 px-1 rounded">텅 빔</div>}
+                    {o.opened && <div className="text-[9px] sm:text-[11px] font-display text-emerald-300 glass-dark px-1.5 py-0.5 rounded-md">✔ 획득</div>}
+                    {o.examined && !o.hasKey && !o.opened && <div className="text-[9px] sm:text-[11px] font-display text-slate-300 glass-dark px-1.5 py-0.5 rounded-md">텅 빔</div>}
                   </div>
                 );
               })}
@@ -1288,16 +1481,16 @@
               <div ref={charRef}
                 className="absolute z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ left: SPAWN_POS.x + '%', top: SPAWN_POS.y + '%' }}>
-                <div className={`${moving ? 'walk-bob' : ''}`} style={{ transform: `scaleX(${facing})` }}>
-                  <div className="text-4xl sm:text-5xl md:text-6xl drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]">🕵️</div>
+                <div className="drop-shadow-[0_6px_8px_rgba(0,0,0,0.55)]">
+                  <ExplorerChar moving={moving} facing={facing} />
                 </div>
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 bg-black/30 rounded-full blur-[2px]" />
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 bg-black/35 rounded-full blur-[3px]" />
               </div>
 
               {/* 토스트 메시지 */}
               {toast && (
                 <div key={toast.id} className="absolute left-1/2 -translate-x-1/2 bottom-[30%] z-40 toast-in pointer-events-none">
-                  <div className="bg-black/80 text-white font-black text-sm sm:text-base px-4 py-2 rounded-2xl shadow-2xl whitespace-nowrap">
+                  <div className="glass-dark text-white font-display text-sm sm:text-base px-4 py-2 rounded-2xl shadow-2xl whitespace-nowrap tracking-wide">
                     {toast.text}
                   </div>
                 </div>
@@ -1314,20 +1507,20 @@
             </div>
 
             {/* ===== 조작 패널 (모바일 D-패드 + 조사 버튼) ===== */}
-            <div className="relative flex-shrink-0 bg-black/70 backdrop-blur-sm px-3 py-2 sm:py-3 flex items-center justify-between z-30">
+            <div className="relative flex-shrink-0 glass-dark px-3 py-2 sm:py-3 flex items-center justify-between z-30 border-t border-white/10">
               {/* D-패드 */}
               <div className="grid grid-cols-3 grid-rows-3 gap-0.5 w-[110px] h-[110px] sm:w-[130px] sm:h-[130px]">
                 <div />
-                <button className="dpad-btn bg-white/15 active:bg-white/40 rounded-lg text-white text-lg font-black flex items-center justify-center"
+                <button className="dpad-btn bg-gradient-to-b from-white/25 to-white/10 active:from-yellow-400/70 active:to-amber-500/50 border border-white/20 shadow-lg rounded-xl text-white text-lg font-black flex items-center justify-center"
                   onPointerDown={dpadPress(0,-1)} onPointerUp={dpadRelease} onPointerLeave={dpadRelease} onPointerCancel={dpadRelease}>▲</button>
                 <div />
-                <button className="dpad-btn bg-white/15 active:bg-white/40 rounded-lg text-white text-lg font-black flex items-center justify-center"
+                <button className="dpad-btn bg-gradient-to-b from-white/25 to-white/10 active:from-yellow-400/70 active:to-amber-500/50 border border-white/20 shadow-lg rounded-xl text-white text-lg font-black flex items-center justify-center"
                   onPointerDown={dpadPress(-1,0)} onPointerUp={dpadRelease} onPointerLeave={dpadRelease} onPointerCancel={dpadRelease}>◀</button>
                 <div className="bg-white/5 rounded-lg" />
-                <button className="dpad-btn bg-white/15 active:bg-white/40 rounded-lg text-white text-lg font-black flex items-center justify-center"
+                <button className="dpad-btn bg-gradient-to-b from-white/25 to-white/10 active:from-yellow-400/70 active:to-amber-500/50 border border-white/20 shadow-lg rounded-xl text-white text-lg font-black flex items-center justify-center"
                   onPointerDown={dpadPress(1,0)} onPointerUp={dpadRelease} onPointerLeave={dpadRelease} onPointerCancel={dpadRelease}>▶</button>
                 <div />
-                <button className="dpad-btn bg-white/15 active:bg-white/40 rounded-lg text-white text-lg font-black flex items-center justify-center"
+                <button className="dpad-btn bg-gradient-to-b from-white/25 to-white/10 active:from-yellow-400/70 active:to-amber-500/50 border border-white/20 shadow-lg rounded-xl text-white text-lg font-black flex items-center justify-center"
                   onPointerDown={dpadPress(0,1)} onPointerUp={dpadRelease} onPointerLeave={dpadRelease} onPointerCancel={dpadRelease}>▼</button>
                 <div />
               </div>
@@ -1339,11 +1532,11 @@
               {/* 조사 버튼 */}
               <button onClick={interact}
                 disabled={!nearTarget}
-                className={`w-[90px] h-[90px] sm:w-[110px] sm:h-[110px] rounded-full font-black text-white text-sm sm:text-base flex flex-col items-center justify-center gap-0.5 border-4 transition active:scale-90
+                className={`w-[90px] h-[90px] sm:w-[110px] sm:h-[110px] rounded-full font-display text-white text-sm sm:text-base flex flex-col items-center justify-center gap-0.5 border-4 transition active:scale-90
                   ${nearTarget
                     ? (nearDoor && doorUnlocked
-                      ? 'bg-gradient-to-br from-yellow-400 to-orange-500 border-yellow-200 glow'
-                      : 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-300 shadow-2xl')
+                      ? 'bg-gradient-to-br from-yellow-400 to-orange-500 border-yellow-200 glow shadow-[0_0_24px_rgba(251,191,36,0.5)]'
+                      : 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-300 shadow-[0_0_20px_rgba(129,140,248,0.45)]')
                     : 'bg-white/10 border-white/15 text-white/40'}`}>
                 <span className="text-2xl sm:text-3xl">{nearDoor ? (doorUnlocked ? '🔓' : '🚪') : '🔍'}</span>
                 {nearDoor ? (doorUnlocked ? '탈출!' : '문 조사') : nearObj ? '조사하기' : '가까이 가자'}
@@ -1352,13 +1545,16 @@
 
             {/* ===== 문제 모달 (열쇠 도전!) ===== */}
             {modal && (
-              <div className="absolute inset-0 z-50 bg-black/70 flex items-center justify-center p-3">
-                <div className={`bg-white rounded-3xl shadow-2xl p-4 sm:p-6 w-full max-w-md animate-fade-in ${modalFeedback === 'wrong' ? 'shake' : ''}`}>
+              <div className="absolute inset-0 z-50 bg-black/75 backdrop-blur-[2px] flex items-center justify-center p-3">
+                <div className={`glass-panel rounded-3xl shadow-[0_0_60px_rgba(251,191,36,0.25)] border-4 border-yellow-400/70 p-4 sm:p-6 w-full max-w-md animate-fade-in ${modalFeedback === 'wrong' ? 'shake' : ''}`}>
                   <div className="text-center mb-2">
-                    <div className="text-3xl sm:text-4xl mb-1">
-                      {objects.find(o => o.id === modal.objId)?.emoji} ✨
+                    <div className="relative inline-block">
+                      <div className="text-3xl sm:text-4xl mb-1">
+                        {objects.find(o => o.id === modal.objId)?.emoji}
+                      </div>
+                      <div className="sparkle absolute -top-1 -right-4 text-lg">✨</div>
                     </div>
-                    <div className="font-black text-slate-800 text-sm sm:text-base">
+                    <div className="font-display text-slate-800 text-base sm:text-lg tracking-wide">
                       {objects.find(o => o.id === modal.objId)?.name} 속에 열쇠가 있다!
                     </div>
                     <div className="text-[11px] sm:text-xs text-slate-500">문제를 맞히면 🗝️ 열쇠 획득 · {modal.problem.tag}</div>
