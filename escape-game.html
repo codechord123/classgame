@@ -303,6 +303,15 @@
     const TEAM_SIZE = 5;
     const teamMeta = (id) => TEAMS.find(t => t.id === Number(id)) || null;
 
+    // ============== 캐릭터 선택 (귀여운 색상 테마) ==============
+    const CHARACTERS = [
+      { id: 'explorer', name: '탐험가', emoji: '🧭', vest: '#d97706', vestDark: '#92400e', strap: '#7c2d12', hat: '#92400e', hatDark: '#78350f' },
+      { id: 'ranger',   name: '레인저', emoji: '🌿', vest: '#16a34a', vestDark: '#14532d', strap: '#14532d', hat: '#15803d', hatDark: '#14532d' },
+      { id: 'wizard',   name: '마법사', emoji: '🧙', vest: '#9333ea', vestDark: '#6b21a8', strap: '#581c87', hat: '#7e22ce', hatDark: '#581c87' },
+      { id: 'pinky',    name: '핑크요정', emoji: '🌸', vest: '#ec4899', vestDark: '#be185d', strap: '#9d174d', hat: '#f472b6', hatDark: '#be185d' },
+    ];
+    const charMeta = (id) => CHARACTERS.find(c => c.id === id) || CHARACTERS[0];
+
     function bestPerPlayer(entries) {
       const best = {};
       entries.forEach(e => {
@@ -373,6 +382,11 @@
       const cs = totalCs % 100;
       return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
     };
+    const formatDate = (ts) => {
+      if (!ts) return '-';
+      const d = new Date(ts);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    };
 
     // ============== 리더보드 (방탈출 전용 키) ==============
     const LB_KEY = 'fraction-escape-game-leaderboard-v1';
@@ -412,22 +426,33 @@
       }
       return loadLocalLB();
     }
+    // 같은 이름+모둠의 기존 기록이 있으면, 더 나은 기록일 때만 교체 (기록 경신만 유지)
+    function upsertBest(list, entry, isBetter) {
+      const idx = list.findIndex(e => e.name === entry.name && Number(e.team) === Number(entry.team));
+      if (idx === -1) return [...list, entry];
+      if (isBetter(entry, list[idx])) {
+        const next = [...list];
+        next[idx] = entry;
+        return next;
+      }
+      return list;
+    }
     async function submitScoreRemote(name, team, time) {
+      const entry = { name, team: Number(team) || 0, time, date: Date.now() };
+      const isBetter = (a, b) => a.time < b.time;
       if (isGAS()) {
         try {
           const data = await runGAS(function (r) { r.submitScoreEscape(name, team, time); });
           if (Array.isArray(data)) return { data, saved: 'remote', error: null };
         } catch (e) {
           const msg = (e && e.message) || String(e);
-          const entry = { name, team: Number(team) || 0, time, date: Date.now() };
-          const updated = [...loadLocalLB(), entry];
-          saveLocalLB(updated.slice(-200));
+          const updated = upsertBest(loadLocalLB(), entry, isBetter).slice(-200);
+          saveLocalLB(updated);
           return { data: updated, saved: 'local-fallback', error: msg };
         }
       }
-      const entry = { name, team: Number(team) || 0, time, date: Date.now() };
-      const updated = [...loadLocalLB(), entry];
-      saveLocalLB(updated.slice(-200));
+      const updated = upsertBest(loadLocalLB(), entry, isBetter).slice(-200);
+      saveLocalLB(updated);
       return { data: updated, saved: 'local', error: null };
     }
     async function clearLeaderboardRemote(password) {
@@ -455,22 +480,51 @@
     }
     async function submitScoreTimedRemote(name, team, mode, rooms, time) {
       const sortFn = (a, b) => (b.rooms - a.rooms) || (a.time - b.time);
+      const entry = { name, team: Number(team) || 0, rooms, time, date: Date.now() };
+      const isBetter = (a, b) => a.rooms > b.rooms || (a.rooms === b.rooms && a.time < b.time);
       if (isGAS()) {
         try {
           const data = await runGAS(function (r) { r.submitScoreEscapeTimed(name, team, mode, rooms, time); });
           if (Array.isArray(data)) return { data, saved: 'remote', error: null };
         } catch (e) {
           const msg = (e && e.message) || String(e);
-          const entry = { name, team: Number(team) || 0, rooms, time, date: Date.now() };
-          const updated = [...loadLocalLBTimed(mode), entry].sort(sortFn).slice(0, 200);
+          const updated = upsertBest(loadLocalLBTimed(mode), entry, isBetter).sort(sortFn).slice(0, 200);
           saveLocalLBTimed(mode, updated);
           return { data: updated, saved: 'local-fallback', error: msg };
         }
       }
-      const entry = { name, team: Number(team) || 0, rooms, time, date: Date.now() };
-      const updated = [...loadLocalLBTimed(mode), entry].sort(sortFn).slice(0, 200);
+      const updated = upsertBest(loadLocalLBTimed(mode), entry, isBetter).sort(sortFn).slice(0, 200);
       saveLocalLBTimed(mode, updated);
       return { data: updated, saved: 'local', error: null };
+    }
+
+    // ============== 관리자 설정 (통분 힌트 비용 / 오답 페널티) ==============
+    const ESCAPE_SETTINGS_KEY = 'fraction-escape-game-settings-v1';
+    const DEFAULT_SETTINGS = { hintCostMs: 25000, penaltyMs: 8000 };
+    const loadLocalSettings = () => {
+      try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(ESCAPE_SETTINGS_KEY) || '{}') }; }
+      catch { return { ...DEFAULT_SETTINGS }; }
+    };
+    const saveLocalSettings = (settings) => { try { localStorage.setItem(ESCAPE_SETTINGS_KEY, JSON.stringify(settings)); } catch {} };
+    async function fetchSettingsRemote() {
+      if (isGAS()) {
+        try {
+          const data = await runGAS(function (r) { r.getEscapeSettings(); });
+          if (data && typeof data === 'object') return { ...DEFAULT_SETTINGS, ...data };
+        } catch (e) { console.warn('getEscapeSettings 실패, 로컬 사용:', e); }
+      }
+      return loadLocalSettings();
+    }
+    async function saveSettingsRemote(password, hintCostMs, penaltyMs) {
+      if (isGAS()) {
+        const data = await runGAS(function (r) { r.setEscapeSettings(password, hintCostMs, penaltyMs); });
+        const settings = { ...DEFAULT_SETTINGS, ...data };
+        saveLocalSettings(settings);
+        return settings;
+      }
+      const settings = { hintCostMs, penaltyMs };
+      saveLocalSettings(settings);
+      return settings;
     }
 
     // ============== 방 배경 일러스트 (SVG) ==============
@@ -769,8 +823,9 @@
     };
 
     // ============== 탐험가 캐릭터 (SVG 스프라이트, 걷기 2프레임) ==============
-    const ExplorerChar = ({ moving, facing }) => {
+    const ExplorerChar = ({ moving, facing, skin }) => {
       const [frame, setFrame] = useState(0);
+      const c = skin || CHARACTERS[0];
       useEffect(() => {
         if (!moving) { setFrame(0); return; }
         const t = setInterval(() => setFrame(f => 1 - f), 130);
@@ -791,17 +846,17 @@
             <path d={legs.l} stroke="#1e3a8a" strokeWidth="9" strokeLinecap="round" fill="none" />
             <path d={legs.r} stroke="#1d4ed8" strokeWidth="9" strokeLinecap="round" fill="none" />
             {/* 팔 (뒤) */}
-            <path d={arms.l} stroke="#b45309" strokeWidth="8" strokeLinecap="round" fill="none" />
-            {/* 몸통 (탐험가 셔츠+조끼) */}
-            <rect x="33" y="54" width="34" height="38" rx="11" fill="#d97706" stroke="#92400e" strokeWidth="2" />
-            <path d="M 37,56 L 37,90 L 45,90 L 45,56 Z" fill="#7c2d12" />
-            <path d="M 63,56 L 63,90 L 55,90 L 55,56 Z" fill="#7c2d12" />
+            <path d={arms.l} stroke={c.vestDark} strokeWidth="8" strokeLinecap="round" fill="none" />
+            {/* 몸통 (셔츠+조끼) */}
+            <rect x="33" y="54" width="34" height="38" rx="11" fill={c.vest} stroke={c.vestDark} strokeWidth="2" />
+            <path d="M 37,56 L 37,90 L 45,90 L 45,56 Z" fill={c.strap} />
+            <path d="M 63,56 L 63,90 L 55,90 L 55,56 Z" fill={c.strap} />
             <circle cx="50" cy="66" r="2.2" fill="#fde68a" />
             <circle cx="50" cy="76" r="2.2" fill="#fde68a" />
             {/* 가방끈 */}
             <line x1="40" y1="56" x2="58" y2="90" stroke="#451a03" strokeWidth="4" opacity="0.7" />
             {/* 팔 (앞) */}
-            <path d={arms.r} stroke="#d97706" strokeWidth="8" strokeLinecap="round" fill="none" />
+            <path d={arms.r} stroke={c.vest} strokeWidth="8" strokeLinecap="round" fill="none" />
             {/* 머리 */}
             <circle cx="50" cy="34" r="20" fill="#ffd9ad" stroke="#c08552" strokeWidth="1.5" />
             <circle cx="44" cy="33" r="3.2" fill="#1f2937" />
@@ -811,9 +866,9 @@
             <path d="M 46,42 Q 51,46.5 56,42" stroke="#92400e" strokeWidth="2.2" fill="none" strokeLinecap="round" />
             <circle cx="37" cy="39" r="3" fill="#fb923c" opacity="0.5" />
             <circle cx="63" cy="39" r="3" fill="#fb923c" opacity="0.5" />
-            {/* 탐험가 모자 */}
-            <path d="M 28,25 Q 50,4 72,25 L 72,29 Q 50,21 28,29 Z" fill="#92400e" stroke="#78350f" strokeWidth="1.5" />
-            <ellipse cx="50" cy="27.5" rx="29" ry="6" fill="#78350f" />
+            {/* 모자 */}
+            <path d="M 28,25 Q 50,4 72,25 L 72,29 Q 50,21 28,29 Z" fill={c.hat} stroke={c.hatDark} strokeWidth="1.5" />
+            <ellipse cx="50" cy="27.5" rx="29" ry="6" fill={c.hatDark} />
             <path d="M 33,22 Q 50,16 67,22" stroke="#451a03" strokeWidth="4" fill="none" />
           </svg>
         </div>
@@ -977,7 +1032,6 @@
     };
 
     // ============== 메인 ==============
-    const PENALTY_MS = 8000;
     const CHAR_SPEED = 36; // %/초
 
     function App() {
@@ -1012,6 +1066,17 @@
       const [timedLeaderboard, setTimedLeaderboard] = useState([]);
       const [timedLbBusy, setTimedLbBusy] = useState(false);
       const [timedSubmitStatus, setTimedSubmitStatus] = useState(null);
+      const [lbModeId, setLbModeId] = useState('free'); // 'free' | '10' | '7' | '5'
+      const [lbModeData, setLbModeData] = useState({}); // { '10': [...], '7': [...], '5': [...] }
+      const [lbModeBusy, setLbModeBusy] = useState(false);
+      const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+      const [characterId, setCharacterId] = useState(CHARACTERS[0].id);
+      const [showAdminModal, setShowAdminModal] = useState(false);
+      const [adminPwInput, setAdminPwInput] = useState('');
+      const [adminHintSec, setAdminHintSec] = useState(25);
+      const [adminPenaltySec, setAdminPenaltySec] = useState(8);
+      const [adminBusy, setAdminBusy] = useState(false);
+      const [adminMsg, setAdminMsg] = useState(null);
 
       const startRef = useRef(0);
       const penaltyRef = useRef(0);
@@ -1043,6 +1108,59 @@
       }, []);
 
       useEffect(() => { setUsingRemote(isGAS()); refreshLB(); }, [refreshLB]);
+
+      // 시간 제한 모드별 명예의 전당 불러오기 (자유 모드가 아닐 때)
+      const loadTimedLB = useCallback(async (modeId) => {
+        setLbModeBusy(true);
+        try {
+          const data = await fetchLeaderboardTimed(modeId);
+          setLbModeData(prev => ({ ...prev, [modeId]: data }));
+        } catch (e) { console.warn(e); }
+        finally { setLbModeBusy(false); }
+      }, []);
+      useEffect(() => {
+        if (lbModeId !== 'free') loadTimedLB(lbModeId);
+      }, [lbModeId, loadTimedLB]);
+
+      // 관리자 설정(통분 힌트 비용 / 오답 페널티) 불러오기
+      useEffect(() => {
+        (async () => {
+          try {
+            const s = await fetchSettingsRemote();
+            setSettings(s);
+            setAdminHintSec(Math.round(s.hintCostMs / 1000));
+            setAdminPenaltySec(Math.round(s.penaltyMs / 1000));
+          } catch (e) { console.warn(e); }
+        })();
+      }, []);
+
+      // 캐릭터 선택 불러오기/저장
+      useEffect(() => {
+        try {
+          const saved = localStorage.getItem('fraction-escape-character');
+          if (saved && CHARACTERS.some(c => c.id === saved)) setCharacterId(saved);
+        } catch (e) {}
+      }, []);
+      const chooseCharacter = useCallback((id) => {
+        setCharacterId(id);
+        try { localStorage.setItem('fraction-escape-character', id); } catch (e) {}
+      }, []);
+
+      const submitAdminSettings = useCallback(async () => {
+        setAdminBusy(true);
+        setAdminMsg(null);
+        try {
+          const hintCostMs = Math.max(0, Math.round(Number(adminHintSec) * 1000));
+          const penaltyMs = Math.max(0, Math.round(Number(adminPenaltySec) * 1000));
+          const s = await saveSettingsRemote(adminPwInput, hintCostMs, penaltyMs);
+          setSettings(s);
+          setAdminMsg({ ok: true, text: '설정이 저장되었습니다.' });
+        } catch (e) {
+          setAdminMsg({ ok: false, text: (e && e.message) || '비밀번호가 틀렸습니다.' });
+        } finally {
+          setAdminBusy(false);
+        }
+      }, [adminHintSec, adminPenaltySec, adminPwInput]);
 
       const showToast = useCallback((text) => {
         toastIdRef.current += 1;
@@ -1321,7 +1439,7 @@
           }, 700);
         } else {
           setStreak(0);
-          penaltyRef.current += PENALTY_MS;
+          penaltyRef.current += settings.penaltyMs;
           setModalFeedback('wrong');
           setTimeout(() => {
             setModalFeedback(null);
@@ -1406,7 +1524,10 @@
                     {ts.players.map((p, j) => (
                       <div key={j} className="flex justify-between text-[11px] md:text-xs text-slate-600">
                         <span className="truncate">{j+1}. {p.name}</span>
-                        <span className="font-mono">{formatTime(p.time)}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-slate-400">{formatDate(p.date)}</span>
+                          <span className="font-mono">{formatTime(p.time)}</span>
+                        </span>
                       </div>
                     ))}
                     {Array.from({length: Math.max(0, TEAM_SIZE - ts.players.length)}).map((_, j) => (
@@ -1437,7 +1558,10 @@
                   {m && <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded ${m.bg} ${m.text} font-black`}>{m.emoji}{m.id === 0 ? '' : m.id}</span>}
                   {isMine && <span> ⭐</span>}
                 </span>
-                <span className="font-mono">{formatTime(e.time)}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] md:text-xs text-slate-400 font-normal">{formatDate(e.date)}</span>
+                  <span className="font-mono">{formatTime(e.time)}</span>
+                </span>
               </div>
             );
           })}
@@ -1459,6 +1583,7 @@
                   {isMine && <span> ⭐</span>}
                 </span>
                 <span className="flex items-center gap-2">
+                  <span className="text-[10px] md:text-xs text-slate-400 font-normal">{formatDate(e.date)}</span>
                   <span className="text-xs md:text-sm">{e.rooms}/{TOTAL_ROOMS}방</span>
                   <span className="font-mono">{formatTime(e.time)}</span>
                 </span>
@@ -1498,21 +1623,39 @@
               </div>
               <div className="flex gap-2 items-center">
                 {lbUpdatedAt > 0 && (
-                  <span className="text-[10px] text-slate-400 font-mono">
+                  <span className="hidden sm:inline text-[10px] text-slate-400 font-mono">
                     {new Date(lbUpdatedAt).toLocaleTimeString('ko-KR', { hour12: false })} · {leaderboard.length}건
                   </span>
                 )}
-                <button onClick={refreshLB} disabled={lbBusy} className="text-xs font-bold text-slate-500 hover:text-indigo-600 disabled:opacity-50">{lbBusy ? '⏳' : '🔄'} 새로고침</button>
+                <button onClick={() => lbModeId === 'free' ? refreshLB() : loadTimedLB(lbModeId)} disabled={lbBusy || lbModeBusy} className="text-xs font-bold text-slate-500 hover:text-indigo-600 disabled:opacity-50">{(lbBusy || lbModeBusy) ? '⏳' : '🔄'} 새로고침</button>
                 <button onClick={clearLB} disabled={lbBusy} className="text-xs text-slate-400 hover:text-rose-500 underline disabled:opacity-50">초기화</button>
               </div>
             </div>
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-3">
-              <button onClick={() => setLbTab('team')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'team' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🤝 모둠전</button>
-              <button onClick={() => setLbTab('individual')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'individual' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🏆 개인전</button>
+            <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl mb-2">
+              {MODES.map(m => (
+                <button key={m.id} onClick={() => setLbModeId(m.id)}
+                  className={`py-2 rounded-lg font-bold text-[11px] sm:text-sm transition ${lbModeId === m.id ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>
+                  {m.emoji} {m.id === 'free' ? '자유' : `${m.id}분`}
+                </button>
+              ))}
             </div>
-            {lbBusy && leaderboard.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">불러오는 중...</div>}
-            {lbTab === 'team' && <TeamLeaderboard stats={teamStats} highlightTeam={highlight?.team} />}
-            {lbTab === 'individual' && <IndividualLeaderboard entries={playersBest} highlight={highlight} />}
+            {lbModeId === 'free' ? (
+              <>
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-3">
+                  <button onClick={() => setLbTab('team')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'team' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🤝 모둠전</button>
+                  <button onClick={() => setLbTab('individual')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${lbTab === 'individual' ? 'bg-white text-indigo-600 shadow' : 'text-slate-500'}`}>🏆 개인전</button>
+                </div>
+                {lbBusy && leaderboard.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">불러오는 중...</div>}
+                {lbTab === 'team' && <TeamLeaderboard stats={teamStats} highlightTeam={highlight?.team} />}
+                {lbTab === 'individual' && <IndividualLeaderboard entries={playersBest} highlight={highlight} />}
+              </>
+            ) : (
+              <>
+                <div className="text-[11px] sm:text-xs text-slate-400 font-bold mb-2">⏱ {lbModeId}분 도전 모드 · 진행한 방 수 → 시간 순</div>
+                {lbModeBusy && (!lbModeData[lbModeId] || lbModeData[lbModeId].length === 0) && <div className="text-slate-400 text-center py-3 text-sm">불러오는 중...</div>}
+                <IndividualLeaderboardTimed entries={bestPerPlayerTimed(lbModeData[lbModeId] || [])} highlight={highlight} />
+              </>
+            )}
           </div>
         </>
       );
@@ -1520,25 +1663,72 @@
       // ============== 화면: 타이틀 ==============
       if (screen === 'title') {
         return (
-          <div className="vignette relative w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col overflow-hidden">
+          <div className="vignette relative w-full min-h-[100dvh] bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 overflow-y-auto">
             <div className="absolute inset-0 opacity-40"><RoomScene roomId={5} /></div>
             <AmbientFX roomId={7} />
-            <div className="relative z-10 flex-shrink-0 flex flex-col items-center px-4 pt-4 pb-2 gap-2">
+            <button onClick={() => { setShowAdminModal(true); setAdminMsg(null); setAdminPwInput(''); }}
+              className="absolute top-2 right-2 z-20 text-white/50 hover:text-white/90 text-lg p-2" title="선생님 설정">⚙️</button>
+            {showAdminModal && (
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4" onClick={() => setShowAdminModal(false)}>
+                <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="font-black text-slate-800 text-lg mb-1">⚙️ 선생님 설정</h3>
+                  <p className="text-slate-500 text-sm mb-3">통분 힌트 시간 · 오답 페널티를 조정합니다.</p>
+                  <input type="password" value={adminPwInput} onChange={e => setAdminPwInput(e.target.value)}
+                    placeholder="관리자 비밀번호" autoFocus
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 text-slate-800" />
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-500">💡 통분 힌트 (초)</span>
+                      <input type="number" min="0" step="1" value={adminHintSec} onChange={e => setAdminHintSec(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none text-slate-800 font-bold" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-500">❌ 오답 페널티 (초)</span>
+                      <input type="number" min="0" step="1" value={adminPenaltySec} onChange={e => setAdminPenaltySec(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none text-slate-800 font-bold" />
+                    </label>
+                  </div>
+                  {adminMsg && (
+                    <div className={`text-sm font-bold mb-3 ${adminMsg.ok ? 'text-emerald-600' : 'text-rose-500'}`}>{adminMsg.text}</div>
+                  )}
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowAdminModal(false)}
+                      className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition">취소</button>
+                    <button onClick={submitAdminSettings} disabled={adminBusy}
+                      className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-black py-2.5 rounded-xl shadow transition">{adminBusy ? '저장 중...' : '저장'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="relative z-10 flex flex-col items-center px-4 pt-4 pb-4 gap-2">
               <div className="text-center text-white">
-                <div className="text-4xl sm:text-5xl drop-shadow-2xl">🗝️</div>
-                <h1 className="font-display text-3xl sm:text-4xl md:text-5xl tracking-wider text-yellow-300 title-glow">분수 방탈출</h1>
-                <p className="text-xs sm:text-sm text-white/85 font-bold mt-1 tracking-wide">7개의 방 · 숨겨진 열쇠 · 이분모 분수의 비밀</p>
+                <div className="text-3xl sm:text-5xl drop-shadow-2xl">🗝️</div>
+                <h1 className="font-display text-2xl sm:text-4xl md:text-5xl tracking-wider text-yellow-300 title-glow">분수 방탈출</h1>
+                <p className="text-[11px] sm:text-sm text-white/85 font-bold mt-1 tracking-wide">7개의 방 · 숨겨진 열쇠 · 이분모 분수의 비밀</p>
               </div>
 
               <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-left text-[11px] sm:text-xs md:text-sm text-amber-900 mb-3 leading-relaxed break-keep">
                   <span className="font-bold">📜 게임 방법: </span>
-                  캐릭터를 움직여 방 안 물건을 <strong>조사</strong>하세요 · 열쇠가 숨겨진 물건에선 <strong>이분모 분수 문제</strong>가! · 맞히면 🗝️ 획득 · <strong>열쇠 3개</strong>를 모아 문으로 탈출 · 총 <strong>7개 방</strong> · 오답 <strong className="text-rose-600">+8초</strong> · <strong className="text-orange-600">🔥 연속 정답 -3초</strong> · 💡 통분 힌트 +15초
+                  캐릭터를 움직여 방 안 물건을 <strong>조사</strong>하세요 · 열쇠가 숨겨진 물건에선 <strong>이분모 분수 문제</strong>가! · 맞히면 🗝️ 획득 · <strong>열쇠 3개</strong>를 모아 문으로 탈출 · 총 <strong>7개 방</strong> · 오답 <strong className="text-rose-600">+{Math.round(settings.penaltyMs / 1000)}초</strong> · <strong className="text-orange-600">🔥 연속 정답 -3초</strong> · 💡 통분 힌트 +{Math.round(settings.hintCostMs / 1000)}초
                   <div className="mt-1 text-[10px] sm:text-[11px] text-amber-700">🎮 PC: 방향키/WASD 이동, 스페이스로 조사 · 📱 화면 버튼으로 이동/조사</div>
                 </div>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="내 이름 (또는 익명으로 참가)"
                   className="w-full px-4 py-2.5 sm:py-3 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 font-bold text-slate-800" />
                 <TeamPicker value={team} onChange={setTeam} />
+
+                <div className="mt-3">
+                  <div className="text-white/70 text-[11px] sm:text-xs font-bold mb-1.5">🎨 캐릭터 선택</div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {CHARACTERS.map(c => (
+                      <button key={c.id} type="button" onClick={() => chooseCharacter(c.id)}
+                        className={`rounded-xl py-1.5 text-center border-2 transition flex flex-col items-center gap-0.5 ${characterId === c.id ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-white shadow-lg scale-105' : 'bg-white/10 border-white/15 hover:scale-105'}`}>
+                        <div className="h-9 w-full flex items-center justify-center overflow-hidden scale-[0.55]"><ExplorerChar moving={false} facing={1} skin={c} /></div>
+                        <div className="text-white text-[10px] sm:text-xs font-bold">{c.emoji} {c.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="mt-3">
                   <div className="text-white/70 text-[11px] sm:text-xs font-bold mb-1.5">⏱ 도전 모드 선택</div>
@@ -1559,17 +1749,18 @@
                 </button>
                 <div className="mt-3 grid grid-cols-7 gap-1">
                   {ROOMS.map((r) => (
-                    <div key={r.id} className="bg-slate-100 rounded-lg p-1.5 text-center text-[10px] sm:text-xs">
-                      <div className="text-base sm:text-xl">{r.emoji}</div>
+                    <div key={r.id} className="bg-slate-100 rounded-lg p-1 sm:p-1.5 text-center text-[9px] sm:text-xs">
+                      <div className="text-sm sm:text-xl">{r.emoji}</div>
                       <div className="font-black text-slate-700 truncate">{r.id}</div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
-              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg mx-auto">
-                <LeaderboardSection />
+
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-2xl">
+                <div className="max-h-[70vh] sm:max-h-[75vh] min-h-[420px] overflow-y-auto pr-1">
+                  <LeaderboardSection />
+                </div>
               </div>
             </div>
           </div>
@@ -1582,7 +1773,7 @@
           <div className="vignette relative w-full h-[100dvh] bg-slate-950 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 opacity-25"><RoomScene roomId={1} /></div>
             <div className="relative z-10 text-center">
-              <div className="mx-auto w-fit mb-3"><ExplorerChar moving={true} facing={1} /></div>
+              <div className="mx-auto w-fit mb-3"><ExplorerChar moving={true} facing={1} skin={charMeta(characterId)} /></div>
               <div className="font-display text-yellow-300 text-7xl sm:text-9xl drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]">{countdown || 'GO!'}</div>
               <div className="text-white/70 text-sm sm:text-base font-bold mt-3 tracking-widest">{ROOMS[0].emoji} {ROOMS[0].name}에 잠입한다...</div>
             </div>
@@ -1820,7 +2011,7 @@
                 className="absolute z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ left: SPAWN_POS.x + '%', top: SPAWN_POS.y + '%' }}>
                 <div className="drop-shadow-[0_6px_8px_rgba(0,0,0,0.55)]">
-                  <ExplorerChar moving={moving} facing={facing} />
+                  <ExplorerChar moving={moving} facing={facing} skin={charMeta(characterId)} />
                 </div>
                 <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 bg-black/35 rounded-full blur-[3px]" />
               </div>
@@ -1913,11 +2104,11 @@
                     </span>
                   </div>
 
-                  {/* 통분 힌트 (+15초) */}
+                  {/* 통분 힌트 */}
                   {!hintUsed ? (
-                    <button onClick={() => { penaltyRef.current += 15000; setHintUsed(true); }}
+                    <button onClick={() => { penaltyRef.current += settings.hintCostMs; setHintUsed(true); }}
                       className="w-full mb-2 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 text-sky-600 font-bold py-1.5 rounded-xl text-[11px] sm:text-xs transition">
-                      💡 통분 힌트 보기 (⏱ +15초)
+                      💡 통분 힌트 보기 (⏱ +{Math.round(settings.hintCostMs / 1000)}초)
                     </button>
                   ) : (() => {
                     const lcm = lcmOf(modal.problem.a.d, modal.problem.b.d);
@@ -1957,7 +2148,7 @@
                     </div>
                   )}
                   {modalFeedback === 'wrong' && (
-                    <div className="mt-3 text-center font-black text-rose-600 text-base sm:text-lg animate-fade-in">❌ 오답! +8초... 통분을 다시 확인해 봐!</div>
+                    <div className="mt-3 text-center font-black text-rose-600 text-base sm:text-lg animate-fade-in">❌ 오답! +{Math.round(settings.penaltyMs / 1000)}초... 통분을 다시 확인해 봐!</div>
                   )}
                   </div>
 

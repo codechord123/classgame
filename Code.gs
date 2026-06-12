@@ -225,8 +225,15 @@ function submitScoreEscape(name, team, time) {
     const safeName = String(name || 'anon').slice(0, 16);
     const t = Number(time);
     const teamNum = Number(team);
+    const teamSafe = isNaN(teamNum) ? 0 : teamNum;
     if (!isNaN(t) && t > 0) {
-      list.push({ name: safeName, team: isNaN(teamNum) ? 0 : teamNum, time: t, date: Date.now() });
+      const idx = list.findIndex(function(e) { return e.name === safeName && Number(e.team) === teamSafe; });
+      const entry = { name: safeName, team: teamSafe, time: t, date: Date.now() };
+      if (idx === -1) {
+        list.push(entry);
+      } else if (t < list[idx].time) {
+        list[idx] = entry; // 기록을 경신한 경우에만 갱신
+      }
     }
     list.sort(function(a, b) { return a.time - b.time; });
     if (list.length > LB_MAX) list = list.slice(0, LB_MAX);
@@ -274,8 +281,17 @@ function submitScoreEscapeTimed(name, team, mode, rooms, time) {
     const rooms_ = Math.floor(Number(rooms));
     const t = Number(time);
     const teamNum = Number(team);
+    const teamSafe = isNaN(teamNum) ? 0 : teamNum;
     if (!isNaN(rooms_) && rooms_ >= 0 && !isNaN(t) && t >= 0) {
-      list.push({ name: safeName, team: isNaN(teamNum) ? 0 : teamNum, rooms: rooms_, time: t, date: Date.now() });
+      const idx = list.findIndex(function(e) { return e.name === safeName && Number(e.team) === teamSafe; });
+      const entry = { name: safeName, team: teamSafe, rooms: rooms_, time: t, date: Date.now() };
+      if (idx === -1) {
+        list.push(entry);
+      } else {
+        const old = list[idx];
+        const better = rooms_ > old.rooms || (rooms_ === old.rooms && t < old.time);
+        if (better) list[idx] = entry; // 기록을 경신한 경우에만 갱신
+      }
     }
     list.sort(function(a, b) { return (b.rooms - a.rooms) || (a.time - b.time); });
     if (list.length > LB_MAX) list = list.slice(0, LB_MAX);
@@ -294,4 +310,40 @@ function clearLeaderboardEscapeTimed(password) {
   }
   PropertiesService.getScriptProperties().deleteProperty(LB_ESCAPE_TIMED_PROP_KEY);
   return {};
+}
+
+// ===== 분수 방탈출: 관리자(선생님) 설정 - 통분 힌트 비용 / 오답 페널티 =====
+
+const ESCAPE_ADMIN_PASSWORD = 'class0504';
+const LB_ESCAPE_SETTINGS_PROP_KEY = 'LB_ESCAPE_SETTINGS_V1';
+const DEFAULT_ESCAPE_SETTINGS = { hintCostMs: 25000, penaltyMs: 8000 };
+
+function getEscapeSettings() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(LB_ESCAPE_SETTINGS_PROP_KEY);
+    if (!raw) return DEFAULT_ESCAPE_SETTINGS;
+    const obj = JSON.parse(raw);
+    const hintCostMs = Number(obj.hintCostMs);
+    const penaltyMs = Number(obj.penaltyMs);
+    return {
+      hintCostMs: !isNaN(hintCostMs) && hintCostMs >= 0 ? hintCostMs : DEFAULT_ESCAPE_SETTINGS.hintCostMs,
+      penaltyMs: !isNaN(penaltyMs) && penaltyMs >= 0 ? penaltyMs : DEFAULT_ESCAPE_SETTINGS.penaltyMs,
+    };
+  } catch (err) {
+    return DEFAULT_ESCAPE_SETTINGS;
+  }
+}
+
+function setEscapeSettings(password, hintCostMs, penaltyMs) {
+  if (String(password) !== ESCAPE_ADMIN_PASSWORD) {
+    throw new Error('비밀번호가 틀렸습니다.');
+  }
+  const h = Number(hintCostMs);
+  const p = Number(penaltyMs);
+  const settings = {
+    hintCostMs: !isNaN(h) && h >= 0 ? h : DEFAULT_ESCAPE_SETTINGS.hintCostMs,
+    penaltyMs: !isNaN(p) && p >= 0 ? p : DEFAULT_ESCAPE_SETTINGS.penaltyMs,
+  };
+  PropertiesService.getScriptProperties().setProperty(LB_ESCAPE_SETTINGS_PROP_KEY, JSON.stringify(settings));
+  return settings;
 }
