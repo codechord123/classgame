@@ -165,15 +165,18 @@
       return shuffle(choices);
     }
 
-    // 이분모 덧셈 (lcmCap 으로 난이도 제어)
-    function makeDiffDenomAdd(lcmCap) {
+    // 통분 결과(분모)가 세 자리 수를 넘지 않도록 하는 전역 상한
+    const LCM_CAP = 999;
+
+    // 이분모 덧셈 (maxDen: 분모로 등장할 수 있는 최댓값으로 난이도 제어)
+    function makeDiffDenomAdd(maxDen) {
       let d1, d2, tries = 0;
       do {
-        d1 = 2 + rint(9);
-        d2 = 2 + rint(9);
+        d1 = 2 + rint(maxDen - 1);
+        d2 = 2 + rint(maxDen - 1);
         tries++;
         if (tries > 60) { d1 = 3; d2 = 4; break; }
-      } while (d1 === d2 || lcmOf(d1, d2) > lcmCap);
+      } while (d1 === d2 || lcmOf(d1, d2) > LCM_CAP);
       const n1 = 1 + rint(d1 - 1);
       const n2 = 1 + rint(d2 - 1);
       const lcm = lcmOf(d1, d2);
@@ -190,14 +193,14 @@
     }
 
     // 이분모 뺄셈
-    function makeDiffDenomSub(lcmCap) {
+    function makeDiffDenomSub(maxDen) {
       let d1, d2, tries = 0;
       do {
-        d1 = 2 + rint(9);
-        d2 = 2 + rint(9);
+        d1 = 2 + rint(maxDen - 1);
+        d2 = 2 + rint(maxDen - 1);
         tries++;
         if (tries > 60) { d1 = 3; d2 = 4; break; }
-      } while (d1 === d2 || lcmOf(d1, d2) > lcmCap);
+      } while (d1 === d2 || lcmOf(d1, d2) > LCM_CAP);
       let n1 = 1 + rint(d1 - 1);
       let n2 = 1 + rint(d2 - 1);
       const lcm = lcmOf(d1, d2);
@@ -219,10 +222,10 @@
     // 같은 문제가 반복 출제되지 않도록 세션 동안 출제 이력 추적
     const usedProblemKeys = new Set();
     const problemKey = (p) => `${p.a.n}/${p.a.d}${p.op}${p.b.n}/${p.b.d}`;
-    const generateProblem = (lcmCap) => {
+    const generateProblem = (maxDen) => {
       let p = null;
       for (let i = 0; i < 30; i++) {
-        p = Math.random() < 0.5 ? makeDiffDenomAdd(lcmCap) : makeDiffDenomSub(lcmCap);
+        p = Math.random() < 0.5 ? makeDiffDenomAdd(maxDen) : makeDiffDenomSub(maxDen);
         if (!usedProblemKeys.has(problemKey(p))) break;
       }
       usedProblemKeys.add(problemKey(p));
@@ -233,37 +236,37 @@
     // ============== 방 구성 ==============
     // objects: 방 안을 돌아다니며 조사할 수 있는 물건들. 매 판마다 이 중 3개에 열쇠가 숨겨짐.
     const ROOMS = [
-      { id: 1, name: '실험실', emoji: '🧪', lcmCap: 12, story: '수상한 실험실… 약품 사이 어딘가에 열쇠가 숨어있다!', bg: 'from-slate-800 via-emerald-900 to-slate-900',
+      { id: 1, name: '실험실', emoji: '🧪', maxDen: 9, story: '수상한 실험실… 약품 사이 어딘가에 열쇠가 숨어있다!', bg: 'from-slate-800 via-emerald-900 to-slate-900',
         objects: [
           { emoji: '🧪', name: '시험관' }, { emoji: '⚗️', name: '플라스크' }, { emoji: '🗄️', name: '캐비닛' },
           { emoji: '🔬', name: '현미경' }, { emoji: '📦', name: '실험 상자' }, { emoji: '🧫', name: '배양 접시' },
         ] },
-      { id: 2, name: '도서관', emoji: '📚', lcmCap: 15, story: '오래된 책 냄새… 책장 사이에 비밀이 숨겨져 있다.', bg: 'from-amber-900 via-yellow-950 to-stone-900',
+      { id: 2, name: '도서관', emoji: '📚', maxDen: 12, story: '오래된 책 냄새… 책장 사이에 비밀이 숨겨져 있다.', bg: 'from-amber-900 via-yellow-950 to-stone-900',
         objects: [
           { emoji: '📕', name: '낡은 책' }, { emoji: '📗', name: '두꺼운 백과사전' }, { emoji: '🕰️', name: '괘종시계' },
           { emoji: '🗃️', name: '서랍장' }, { emoji: '🪑', name: '오래된 의자' }, { emoji: '🕯️', name: '촛대' },
         ] },
-      { id: 3, name: '시계탑', emoji: '⏰', lcmCap: 18, story: '째깍째깍… 시간이 다 가기 전에 열쇠를 찾아라!', bg: 'from-indigo-900 via-purple-950 to-slate-900',
+      { id: 3, name: '시계탑', emoji: '⏰', maxDen: 15, story: '째깍째깍… 시간이 다 가기 전에 열쇠를 찾아라!', bg: 'from-indigo-900 via-purple-950 to-slate-900',
         objects: [
           { emoji: '⚙️', name: '거대한 톱니' }, { emoji: '🕰️', name: '벽시계' }, { emoji: '🔔', name: '청동 종' },
           { emoji: '🪜', name: '낡은 사다리' }, { emoji: '🧰', name: '공구함' }, { emoji: '📦', name: '나무 상자' },
         ] },
-      { id: 4, name: '비밀의 정원', emoji: '🌿', lcmCap: 20, story: '달빛이 비치는 정원… 꽃과 바위 사이를 살펴보자.', bg: 'from-emerald-800 via-green-900 to-teal-950',
+      { id: 4, name: '비밀의 정원', emoji: '🌿', maxDen: 18, story: '달빛이 비치는 정원… 꽃과 바위 사이를 살펴보자.', bg: 'from-emerald-800 via-green-900 to-teal-950',
         objects: [
           { emoji: '🌸', name: '커다란 꽃' }, { emoji: '🪨', name: '이끼 낀 바위' }, { emoji: '🏺', name: '깨진 화분' },
           { emoji: '🍄', name: '수상한 버섯' }, { emoji: '⛲', name: '분수대' }, { emoji: '🌳', name: '고목나무' },
         ] },
-      { id: 5, name: '고대 사원', emoji: '🏛️', lcmCap: 24, story: '고대의 수호자가 분수 문제로 너를 시험한다…', bg: 'from-stone-800 via-orange-950 to-stone-950',
+      { id: 5, name: '고대 사원', emoji: '🏛️', maxDen: 21, story: '고대의 수호자가 분수 문제로 너를 시험한다…', bg: 'from-stone-800 via-orange-950 to-stone-950',
         objects: [
           { emoji: '🏺', name: '고대 항아리' }, { emoji: '🗿', name: '석상' }, { emoji: '📜', name: '두루마리' },
           { emoji: '🪔', name: '등잔' }, { emoji: '⚱️', name: '봉인된 단지' }, { emoji: '🧱', name: '헐거운 벽돌' },
         ] },
-      { id: 6, name: '우주 정거장', emoji: '🚀', lcmCap: 24, story: '경고! 산소 부족! 서둘러 열쇠를 찾아 탈출하자!', bg: 'from-slate-950 via-indigo-950 to-purple-950',
+      { id: 6, name: '우주 정거장', emoji: '🚀', maxDen: 24, story: '경고! 산소 부족! 서둘러 열쇠를 찾아 탈출하자!', bg: 'from-slate-950 via-indigo-950 to-purple-950',
         objects: [
           { emoji: '🎛️', name: '컨트롤 패널' }, { emoji: '📡', name: '안테나' }, { emoji: '🧯', name: '소화기' },
           { emoji: '🛰️', name: '위성 모형' }, { emoji: '🪛', name: '공구 세트' }, { emoji: '📦', name: '보급 상자' },
         ] },
-      { id: 7, name: '보물 창고', emoji: '💎', lcmCap: 30, story: '마지막 방! 보물 더미 속 황금 열쇠를 찾아라!', bg: 'from-amber-900 via-rose-950 to-stone-950',
+      { id: 7, name: '보물 창고', emoji: '💎', maxDen: 28, story: '마지막 방! 보물 더미 속 황금 열쇠를 찾아라!', bg: 'from-amber-900 via-rose-950 to-stone-950',
         objects: [
           { emoji: '💰', name: '금화 주머니' }, { emoji: '🏺', name: '황금 항아리' }, { emoji: '👑', name: '왕관' },
           { emoji: '🗿', name: '수호 석상' }, { emoji: '💎', name: '보석함' }, { emoji: '⚱️', name: '고대 단지' },
@@ -271,6 +274,14 @@
     ];
     const TOTAL_ROOMS = ROOMS.length;
     const KEYS_PER_ROOM = 3;
+
+    // ============== 도전 모드 ==============
+    const MODES = [
+      { id: 'free', name: '전체 탈출', emoji: '♾️', ms: null,    desc: '7개 방 모두 탈출! 시간 제한 없음' },
+      { id: '10',   name: '10분 도전', emoji: '⏰', ms: 600000, desc: '10분 안에 최대한 많은 방 탈출!' },
+      { id: '7',    name: '7분 도전',  emoji: '⚡', ms: 420000, desc: '7분 안에 최대한 많은 방 탈출!' },
+      { id: '5',    name: '5분 도전',  emoji: '🔥', ms: 300000, desc: '5분 안에 최대한 많은 방 탈출!' },
+    ];
 
     // 물건 배치 좌표 (% 단위, 게임 영역 기준) — 바닥 영역에 골고루
     const OBJECT_SPOTS = [
@@ -952,6 +963,7 @@
       const [facing, setFacing] = useState(1); // 1 오른쪽, -1 왼쪽
       const [streak, setStreak] = useState(0); // 연속 정답 콤보
       const [hintUsed, setHintUsed] = useState(false);
+      const [mode, setMode] = useState(MODES[0]); // 도전 모드 (자유/시간 제한)
 
       const startRef = useRef(0);
       const penaltyRef = useRef(0);
@@ -1021,6 +1033,17 @@
         rafTimerRef.current = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(rafTimerRef.current);
       }, [screen]);
+
+      // 시간 제한 모드: 제한 시간이 다 되면 게임 종료
+      useEffect(() => {
+        if (screen !== 'playing' || !mode.ms || lockRef.current) return;
+        if (elapsed >= mode.ms) {
+          lockRef.current = true;
+          setModal(null);
+          setModalFeedback(null);
+          setScreen('timeUp');
+        }
+      }, [screen, elapsed, mode]);
 
       // 카운트다운
       useEffect(() => {
@@ -1197,7 +1220,7 @@
           // 분수 문제 출제! (이동 입력은 초기화해 모달 닫힌 뒤 미끄러짐 방지)
           dirRef.current = { x: 0, y: 0 };
           keysDownRef.current.clear();
-          setModal({ objId: obj.id, problem: generateProblem(ROOMS[roomIdx].lcmCap) });
+          setModal({ objId: obj.id, problem: generateProblem(ROOMS[roomIdx].maxDen) });
           setModalFeedback(null);
           setHintUsed(false);
         } else {
@@ -1429,6 +1452,20 @@
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="내 이름 (또는 익명으로 참가)"
                   className="w-full px-4 py-2.5 sm:py-3 rounded-xl border-2 border-slate-300 focus:border-indigo-500 outline-none mb-3 font-bold text-slate-800" />
                 <TeamPicker value={team} onChange={setTeam} />
+
+                <div className="mt-3">
+                  <div className="text-white/70 text-[11px] sm:text-xs font-bold mb-1.5">⏱ 도전 모드 선택</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {MODES.map(m => (
+                      <button key={m.id} type="button" onClick={() => setMode(m)}
+                        className={`rounded-xl p-2 text-center border-2 transition ${mode.id === m.id ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-white shadow-lg scale-105' : 'bg-white/10 text-white/80 border-white/15 hover:scale-105'}`}>
+                        <div className="text-lg sm:text-xl">{m.emoji}</div>
+                        <div className="font-display text-[11px] sm:text-xs tracking-wide">{m.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-white/60 text-[10px] sm:text-[11px] mt-1.5 text-center">{mode.desc}</div>
+                </div>
                 <button onClick={startGame} disabled={!name.trim() || team === null}
                   className="w-full mt-3 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:via-orange-400 hover:to-rose-400 disabled:from-slate-300 disabled:via-slate-300 disabled:to-slate-400 text-white font-display py-3 sm:py-4 rounded-xl shadow-[0_8px_24px_rgba(249,115,22,0.4)] text-lg sm:text-xl tracking-wider transition ring-2 ring-white/30">
                   🚪 탐험 시작
@@ -1484,6 +1521,33 @@
                   <div className="mt-1 text-xl sm:text-2xl font-black text-slate-800">{nextRoom.emoji} {nextRoom.name}</div>
                 </div>
               )}
+            </div>
+          </div>
+        );
+      }
+
+      // ============== 화면: 시간 종료 (제한 시간 모드) ==============
+      if (screen === 'timeUp') {
+        const room = currentRoom;
+        const roomsCleared = roomIdx;
+        return (
+          <div className="vignette relative w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center justify-center p-4 overflow-hidden">
+            <div className="absolute inset-0 opacity-25"><RoomScene roomId={room.id} /></div>
+            <div className="relative z-10 glass-panel rounded-3xl shadow-2xl p-5 sm:p-8 max-w-md w-full animate-fade-in text-center">
+              <div className="text-5xl sm:text-7xl mb-2">⏰</div>
+              <h2 className="font-display text-2xl sm:text-3xl text-slate-800 mb-1 tracking-wide">시간 종료!</h2>
+              <div className="text-xs sm:text-sm font-bold text-slate-500 mb-3">{mode.emoji} {mode.name}</div>
+              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-3 px-4 mb-3">
+                <div className="text-3xl sm:text-5xl font-black text-emerald-600">{roomsCleared}<span className="text-base sm:text-xl text-slate-500"> / {TOTAL_ROOMS}개 방</span></div>
+                <div className="text-[11px] sm:text-sm text-slate-500 mt-1">탈출 성공!</div>
+              </div>
+              <div className="font-mono text-base sm:text-lg font-black text-slate-600 mb-3">⏱ {formatTime(elapsed)}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-2.5 sm:py-3 rounded-xl shadow transition">🔁 다시 도전</button>
+                <button onClick={() => resetGame(true)}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-2.5 sm:py-3 rounded-xl transition">🏠 처음으로</button>
+              </div>
             </div>
           </div>
         );
@@ -1586,7 +1650,13 @@
                   ))}
                 </div>
               </div>
-              <div className="font-mono font-black text-base sm:text-xl bg-black/40 border border-white/10 rounded-xl px-2.5 py-1 tabular-nums">{formatTime(elapsed)}</div>
+              {mode.ms ? (
+                <div className={`font-mono font-black text-base sm:text-xl bg-black/40 border rounded-xl px-2.5 py-1 tabular-nums ${mode.ms - elapsed <= 30000 ? 'text-rose-400 border-rose-400/50 animate-pulse' : 'border-white/10'}`}>
+                  ⏳ {formatTime(Math.max(0, mode.ms - elapsed))}
+                </div>
+              ) : (
+                <div className="font-mono font-black text-base sm:text-xl bg-black/40 border border-white/10 rounded-xl px-2.5 py-1 tabular-nums">{formatTime(elapsed)}</div>
+              )}
             </div>
 
             {/* ===== 게임 영역 (탐험) ===== */}
