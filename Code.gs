@@ -21,6 +21,7 @@ const LB_PROP_KEY = 'LB_JSON_V1';
 const LB_ADDSUB_PROP_KEY = 'LB_ADDSUB_JSON_V1';
 const LB_RUNNER_PROP_KEY = 'LB_RUNNER_JSON_V1';
 const LB_ESCAPE_PROP_KEY = 'LB_ESCAPE_JSON_V1';
+const LB_ESCAPE_TIMED_PROP_KEY = 'LB_ESCAPE_TIMED_JSON_V1';
 const LB_MAX = 200;
 const TEACHER_PASSWORD = 'teacher1234'; // 선생님이 직접 원하는 비밀번호로 변경하세요
 
@@ -243,4 +244,54 @@ function clearLeaderboardEscape(password) {
   }
   PropertiesService.getScriptProperties().deleteProperty(LB_ESCAPE_PROP_KEY);
   return [];
+}
+
+// ===== 분수 방탈출: 시간 제한 도전 모드 리더보드 (모드별로 분리: '10'/'7'/'5') =====
+
+function getLeaderboardEscapeTimed(mode) {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(LB_ESCAPE_TIMED_PROP_KEY) || '{}';
+    const obj = JSON.parse(raw);
+    const list = obj[String(mode)];
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function submitScoreEscapeTimed(name, team, mode, rooms, time) {
+  const props = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(5000); } catch (e) {}
+  try {
+    const raw = props.getProperty(LB_ESCAPE_TIMED_PROP_KEY) || '{}';
+    let obj = {};
+    try { obj = JSON.parse(raw); } catch (e) { obj = {}; }
+    const m = String(mode);
+    let list = Array.isArray(obj[m]) ? obj[m] : [];
+
+    const safeName = String(name || 'anon').slice(0, 16);
+    const rooms_ = Math.floor(Number(rooms));
+    const t = Number(time);
+    const teamNum = Number(team);
+    if (!isNaN(rooms_) && rooms_ >= 0 && !isNaN(t) && t >= 0) {
+      list.push({ name: safeName, team: isNaN(teamNum) ? 0 : teamNum, rooms: rooms_, time: t, date: Date.now() });
+    }
+    list.sort(function(a, b) { return (b.rooms - a.rooms) || (a.time - b.time); });
+    if (list.length > LB_MAX) list = list.slice(0, LB_MAX);
+
+    obj[m] = list;
+    props.setProperty(LB_ESCAPE_TIMED_PROP_KEY, JSON.stringify(obj));
+    return list;
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+function clearLeaderboardEscapeTimed(password) {
+  if (String(password) !== TEACHER_PASSWORD) {
+    throw new Error('비밀번호가 틀렸습니다.');
+  }
+  PropertiesService.getScriptProperties().deleteProperty(LB_ESCAPE_TIMED_PROP_KEY);
+  return {};
 }

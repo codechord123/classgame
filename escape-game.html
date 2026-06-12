@@ -336,6 +336,17 @@
       return arr;
     }
 
+    // 시간 제한 도전 모드: 방 개수(많을수록 좋음) → 시간(적을수록 좋음) 순
+    function bestPerPlayerTimed(entries) {
+      const best = {};
+      entries.forEach(e => {
+        if (!e || !e.name || typeof e.rooms !== 'number' || typeof e.time !== 'number') return;
+        const key = `${e.name}#${e.team || 0}`;
+        if (!best[key] || e.rooms > best[key].rooms || (e.rooms === best[key].rooms && e.time < best[key].time)) best[key] = e;
+      });
+      return Object.values(best).sort((a, b) => (b.rooms - a.rooms) || (a.time - b.time));
+    }
+
     // ============== 분수 표시 ==============
     const Frac = ({ n, d, color = "text-slate-800", size = "text-2xl sm:text-3xl md:text-4xl" }) => (
       <span className={`inline-flex flex-col items-center mx-1 ${color} ${size} font-black leading-none`}>
@@ -426,6 +437,40 @@
       }
       saveLocalLB([]);
       return [];
+    }
+
+    // ============== 리더보드 (시간 제한 도전 모드, 모드별 분리) ==============
+    const LB_TIMED_KEY_PREFIX = 'fraction-escape-game-timed-leaderboard-v1-';
+    const loadLocalLBTimed = (mode) => { try { return JSON.parse(localStorage.getItem(LB_TIMED_KEY_PREFIX + mode) || '[]'); } catch { return []; } };
+    const saveLocalLBTimed = (mode, entries) => { try { localStorage.setItem(LB_TIMED_KEY_PREFIX + mode, JSON.stringify(entries)); } catch {} };
+
+    async function fetchLeaderboardTimed(mode) {
+      if (isGAS()) {
+        try {
+          const data = await runGAS(function (r) { r.getLeaderboardEscapeTimed(mode); });
+          if (Array.isArray(data)) return data;
+        } catch (e) { console.warn('getLeaderboardEscapeTimed 실패, 로컬 사용:', e); }
+      }
+      return loadLocalLBTimed(mode);
+    }
+    async function submitScoreTimedRemote(name, team, mode, rooms, time) {
+      const sortFn = (a, b) => (b.rooms - a.rooms) || (a.time - b.time);
+      if (isGAS()) {
+        try {
+          const data = await runGAS(function (r) { r.submitScoreEscapeTimed(name, team, mode, rooms, time); });
+          if (Array.isArray(data)) return { data, saved: 'remote', error: null };
+        } catch (e) {
+          const msg = (e && e.message) || String(e);
+          const entry = { name, team: Number(team) || 0, rooms, time, date: Date.now() };
+          const updated = [...loadLocalLBTimed(mode), entry].sort(sortFn).slice(0, 200);
+          saveLocalLBTimed(mode, updated);
+          return { data: updated, saved: 'local-fallback', error: msg };
+        }
+      }
+      const entry = { name, team: Number(team) || 0, rooms, time, date: Date.now() };
+      const updated = [...loadLocalLBTimed(mode), entry].sort(sortFn).slice(0, 200);
+      saveLocalLBTimed(mode, updated);
+      return { data: updated, saved: 'local', error: null };
     }
 
     // ============== 방 배경 일러스트 (SVG) ==============
@@ -964,6 +1009,9 @@
       const [streak, setStreak] = useState(0); // 연속 정답 콤보
       const [hintUsed, setHintUsed] = useState(false);
       const [mode, setMode] = useState(MODES[0]); // 도전 모드 (자유/시간 제한)
+      const [timedLeaderboard, setTimedLeaderboard] = useState([]);
+      const [timedLbBusy, setTimedLbBusy] = useState(false);
+      const [timedSubmitStatus, setTimedSubmitStatus] = useState(null);
 
       const startRef = useRef(0);
       const penaltyRef = useRef(0);
@@ -1044,6 +1092,21 @@
           setScreen('timeUp');
         }
       }, [screen, elapsed, mode]);
+
+      // 시간 제한 도전 결과를 모드별 명예의 전당에 기록
+      useEffect(() => {
+        if (screen !== 'timeUp') return;
+        let cancelled = false;
+        (async () => {
+          setTimedLbBusy(true);
+          const result = await submitScoreTimedRemote(name.trim(), team, mode.id, roomIdx, elapsed);
+          if (cancelled) return;
+          setTimedLeaderboard(result.data);
+          setTimedSubmitStatus({ saved: result.saved, error: result.error });
+          setTimedLbBusy(false);
+        })();
+        return () => { cancelled = true; };
+      }, [screen]);
 
       // 카운트다운
       useEffect(() => {
@@ -1381,6 +1444,30 @@
         </div>
       );
 
+      const IndividualLeaderboardTimed = ({ entries, highlight }) => (
+        <div className="space-y-1">
+          {entries.length === 0 && <div className="text-slate-400 text-center py-3 text-sm">아직 기록이 없습니다.</div>}
+          {entries.slice(0, 15).map((e, i) => {
+            const m = teamMeta(e.team);
+            const isMine = highlight && e.name === highlight.name && Number(e.team) === Number(highlight.team) && e.rooms === highlight.rooms && e.time === highlight.time;
+            return (
+              <div key={i} className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm md:text-base font-bold ${isMine ? 'bg-indigo-200 text-indigo-900 ring-2 ring-indigo-500' : i === 0 ? 'bg-yellow-100 text-yellow-800' : i === 1 ? 'bg-slate-100 text-slate-700' : i === 2 ? 'bg-amber-100 text-amber-800' : 'bg-slate-50 text-slate-600'}`}>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span>{i+1}.</span>
+                  <span className="truncate">{e.name}</span>
+                  {m && <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded ${m.bg} ${m.text} font-black`}>{m.emoji}{m.id === 0 ? '' : m.id}</span>}
+                  {isMine && <span> ⭐</span>}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-xs md:text-sm">{e.rooms}/{TOTAL_ROOMS}방</span>
+                  <span className="font-mono">{formatTime(e.time)}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+
       const LeaderboardSection = ({ highlight }) => (
         <>
           {showPwModal && (
@@ -1446,7 +1533,7 @@
               <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 w-full max-w-lg animate-fade-in">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-left text-[11px] sm:text-xs md:text-sm text-amber-900 mb-3 leading-relaxed break-keep">
                   <span className="font-bold">📜 게임 방법: </span>
-                  캐릭터를 움직여 방 안 물건을 <strong>조사</strong>하세요 · 열쇠가 숨겨진 물건에선 <strong>이분모 분수 문제</strong>가! · 맞히면 🗝️ 획득 · <strong>열쇠 3개</strong>를 모아 문으로 탈출 · 총 <strong>7개 방</strong> · 오답 <strong className="text-rose-600">+8초</strong> · <strong className="text-orange-600">🔥 연속 정답 -3초</strong> · 💡 통분 힌트 +5초
+                  캐릭터를 움직여 방 안 물건을 <strong>조사</strong>하세요 · 열쇠가 숨겨진 물건에선 <strong>이분모 분수 문제</strong>가! · 맞히면 🗝️ 획득 · <strong>열쇠 3개</strong>를 모아 문으로 탈출 · 총 <strong>7개 방</strong> · 오답 <strong className="text-rose-600">+8초</strong> · <strong className="text-orange-600">🔥 연속 정답 -3초</strong> · 💡 통분 힌트 +15초
                   <div className="mt-1 text-[10px] sm:text-[11px] text-amber-700">🎮 PC: 방향키/WASD 이동, 스페이스로 조사 · 📱 화면 버튼으로 이동/조사</div>
                 </div>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="내 이름 (또는 익명으로 참가)"
@@ -1528,25 +1615,46 @@
 
       // ============== 화면: 시간 종료 (제한 시간 모드) ==============
       if (screen === 'timeUp') {
-        const room = currentRoom;
         const roomsCleared = roomIdx;
+        const highlight = { name: name.trim(), team, rooms: roomsCleared, time: elapsed };
+        const timedEntries = bestPerPlayerTimed(timedLeaderboard);
         return (
-          <div className="vignette relative w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center justify-center p-4 overflow-hidden">
-            <div className="absolute inset-0 opacity-25"><RoomScene roomId={room.id} /></div>
-            <div className="relative z-10 glass-panel rounded-3xl shadow-2xl p-5 sm:p-8 max-w-md w-full animate-fade-in text-center">
-              <div className="text-5xl sm:text-7xl mb-2">⏰</div>
-              <h2 className="font-display text-2xl sm:text-3xl text-slate-800 mb-1 tracking-wide">시간 종료!</h2>
-              <div className="text-xs sm:text-sm font-bold text-slate-500 mb-3">{mode.emoji} {mode.name}</div>
-              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-3 px-4 mb-3">
-                <div className="text-3xl sm:text-5xl font-black text-emerald-600">{roomsCleared}<span className="text-base sm:text-xl text-slate-500"> / {TOTAL_ROOMS}개 방</span></div>
-                <div className="text-[11px] sm:text-sm text-slate-500 mt-1">탈출 성공!</div>
+          <div className="w-full h-[100dvh] bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto animate-fade-in text-center">
+                <div className="text-4xl sm:text-6xl mb-1">⏰</div>
+                <h2 className="font-display text-xl sm:text-3xl text-slate-800 tracking-wide">시간 종료!</h2>
+                <div className="text-xs sm:text-sm font-bold text-slate-500 mb-2">{mode.emoji} {mode.name}</div>
+                <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-2.5 px-4 mb-2">
+                  <div className="text-3xl sm:text-5xl font-black text-emerald-600">{roomsCleared}<span className="text-base sm:text-xl text-slate-500"> / {TOTAL_ROOMS}개 방</span></div>
+                  <div className="text-[11px] sm:text-sm text-slate-500 mt-0.5">탈출 성공!</div>
+                </div>
+                <div className="font-mono text-sm sm:text-lg font-black text-slate-600">⏱ {formatTime(elapsed)}</div>
+                {timedSubmitStatus && (
+                  <div className={`mt-2 text-xs sm:text-sm font-bold rounded-lg p-2 text-center
+                    ${timedSubmitStatus.saved === 'remote' ? 'bg-emerald-50 text-emerald-700' :
+                      timedSubmitStatus.saved === 'local-fallback' ? 'bg-amber-50 text-amber-700' :
+                      'bg-sky-50 text-sky-700'}`}>
+                    {timedSubmitStatus.saved === 'remote' && '✅ 도전 모드 명예의 전당에 기록됨'}
+                    {timedSubmitStatus.saved === 'local-fallback' && `⚠️ 서버 저장 실패, 기기에만 임시 저장 (${timedSubmitStatus.error || '오류'})`}
+                    {timedSubmitStatus.saved === 'local' && 'ℹ️ 이 기기에만 기록 저장됨 (앱스크립트 미연결)'}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-2.5 sm:py-3 rounded-xl shadow transition">🔁 다시 도전</button>
+                  <button onClick={() => resetGame(true)}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-2.5 sm:py-3 rounded-xl transition">🏠 처음으로</button>
+                </div>
               </div>
-              <div className="font-mono text-base sm:text-lg font-black text-slate-600 mb-3">⏱ {formatTime(elapsed)}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => { setCountdown(3); setScreen('countdown'); }}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-2.5 sm:py-3 rounded-xl shadow transition">🔁 다시 도전</button>
-                <button onClick={() => resetGame(true)}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-2.5 sm:py-3 rounded-xl transition">🏠 처음으로</button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 sm:px-4 pb-4 hide-scrollbar">
+              <div className="glass-panel rounded-2xl shadow-2xl p-3 sm:p-5 max-w-lg mx-auto">
+                <div className="font-black text-slate-700 flex items-center gap-1.5 mb-2">
+                  🏆 {mode.emoji} {mode.name} 명예의 전당
+                  {timedLbBusy && <span className="text-xs text-slate-400">⏳</span>}
+                </div>
+                <IndividualLeaderboardTimed entries={timedEntries} highlight={highlight} />
               </div>
             </div>
           </div>
@@ -1805,11 +1913,11 @@
                     </span>
                   </div>
 
-                  {/* 통분 힌트 (+5초) */}
+                  {/* 통분 힌트 (+15초) */}
                   {!hintUsed ? (
-                    <button onClick={() => { penaltyRef.current += 5000; setHintUsed(true); }}
+                    <button onClick={() => { penaltyRef.current += 15000; setHintUsed(true); }}
                       className="w-full mb-2 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 text-sky-600 font-bold py-1.5 rounded-xl text-[11px] sm:text-xs transition">
-                      💡 통분 힌트 보기 (⏱ +5초)
+                      💡 통분 힌트 보기 (⏱ +15초)
                     </button>
                   ) : (() => {
                     const lcm = lcmOf(modal.problem.a.d, modal.problem.b.d);
